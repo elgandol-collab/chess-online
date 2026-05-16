@@ -360,6 +360,7 @@
                 seriesLimit = data.seriesLimit;
                 movesDone   = data.movesDone;
                 currentMode = data.mode;
+                if (typeof data.isFirstMove !== 'undefined') isFirstMove = data.isFirstMove;
                 if (data.timers) {
                     timers       = data.timers;
                     increment    = data.increment;
@@ -415,6 +416,7 @@
     var board = null, game = new Chess();
     var currentMode = 'standard', moveStep = 1, seriesLimit = 1, movesDone = 0;
     var historyState = [], currentIdx = 0;
+    var isFirstMove = true; // مارسيليا: نقلة الأبيض الأولى في المباراة تكون مفردة
 
     function changeMode(m) { setMode(m, true); }
 
@@ -436,6 +438,7 @@
     function resetGame(broadcast) {
         game = new Chess();
         moveStep = 1; seriesLimit = 1; movesDone = 0;
+        isFirstMove = true;
         historyState = [game.fen()];
         currentIdx = 0;
         $("#log").empty();
@@ -468,11 +471,19 @@
             } else { moveStep = 1; seriesEnded = true; }
 
         } else if (currentMode === 'marseille') {
-            if (game.history().length === 1) { moveStep = 1; seriesEnded = true; }
-            else if (moveStep === 1) {
-                if (deliveredCheck || startedCheck || game.game_over()) { moveStep = 1; seriesEnded = true; }
-                else { moveStep = 2; forceKeepTurn(); }
-            } else { moveStep = 1; seriesEnded = true; }
+            if (isFirstMove) {
+                // النقلة الأولى للأبيض في المباراة: مفردة دائماً
+                isFirstMove = false;
+                moveStep = 1; seriesEnded = true;
+            } else if (moveStep === 1) {
+                if (deliveredCheck || startedCheck || game.game_over()) {
+                    moveStep = 1; seriesEnded = true;
+                } else {
+                    moveStep = 2; forceKeepTurn();
+                }
+            } else {
+                moveStep = 1; seriesEnded = true;
+            }
 
         } else if (currentMode === 'progressive') {
             movesDone++;
@@ -495,6 +506,7 @@
             conn.send({
                 type: 'move', fen: game.fen(),
                 moveStep, seriesLimit, movesDone, mode: currentMode,
+                isFirstMove,
                 timers, increment, activeColor,
                 lastMoveFlags: move.flags, inCheck: deliveredCheck
             });
