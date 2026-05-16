@@ -2,17 +2,16 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>Chess Online - PeerJS Edition</title>
+    <title>منصة شطرنج الجندول - رابط سريع</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css">
     <style>
         :root { --accent: #00ffcc; --bg: #050505; --panel: #111; --danger: #ff3333; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: #fff; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
         
-        /* لوحة الاتصال */
-        .online-panel { background: var(--panel); padding: 15px; border-radius: 12px; border: 1px solid #333; margin-bottom: 15px; width: 100%; max-width: 840px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-        .id-box { background: #000; padding: 8px; border: 1px solid var(--accent); color: var(--accent); border-radius: 5px; font-family: monospace; font-size: 1.1em; }
-        input { padding: 8px; border-radius: 5px; border: 1px solid #444; background: #222; color: #fff; flex: 1; }
-        .btn-conn { padding: 8px 15px; background: var(--accent); color: #000; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
+        .conn-panel { background: var(--panel); padding: 15px; border-radius: 12px; border: 1px solid #333; margin-bottom: 15px; width: 100%; max-width: 840px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .btn-invite { padding: 12px 25px; background: var(--accent); color: #000; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1em; transition: 0.3s; }
+        .btn-invite:hover { transform: scale(1.05); box-shadow: 0 0 20px var(--accent); }
+        #conn-status { margin-top: 10px; display: block; color: #888; font-size: 0.9em; font-weight: bold; }
 
         .tabs { display: flex; gap: 8px; background: var(--panel); padding: 12px; border-radius: 12px; border: 1px solid #333; margin-bottom: 15px; flex-wrap: wrap; justify-content: center; }
         .tabs button { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; background: #222; color: #888; transition: 0.3s; }
@@ -30,11 +29,9 @@
 </head>
 <body>
 
-    <div class="online-panel">
-        <div>الـ ID بتاعك: <span id="my-id" class="id-box">جاري التوليد...</span></div>
-        <input type="text" id="peer-id-input" placeholder="حط ID صاحبك هنا">
-        <button class="btn-conn" onclick="connectToPeer()">اتصال (Connect)</button>
-        <span id="conn-status" style="color: #888; font-size: 0.9em;">غير متصل</span>
+    <div class="conn-panel">
+        <button class="btn-invite" onclick="copyInviteLink()">اضغط هنا لنسخ رابط دعوة صاحبك 🔗</button>
+        <div id="conn-status">جاري تهيئة النظام...</div>
     </div>
 
     <div class="tabs">
@@ -47,7 +44,7 @@
     <div class="main-wrapper">
         <div id="board"></div>
         <div class="sidebar">
-            <div class="status-box"><div id="status-txt">تحميل...</div></div>
+            <div class="status-box"><div id="status-txt">في انتظار الاتصال...</div></div>
             <div id="log" class="log"></div>
             <div style="display:flex; gap:5px; margin-top:10px;">
                 <button class="nav-btn" onclick="goStart()">«</button>
@@ -68,81 +65,76 @@
         var board = null, game = new Chess();
         var currentMode = 'standard', moveStep = 1, seriesLimit = 1, movesDone = 0;
         var historyState = [], currentIdx = 0;
-        
-        // PeerJS Setup
-        var peer = new Peer(); 
-        var conn = null;
-        var myRole = null; // 'w' or 'b'
+        var myId = null, conn = null, myRole = null;
 
-        peer.on('open', (id) => { $('#my-id').text(id); });
+        const peer = new Peer();
 
-        // استقبال الاتصال
-        peer.on('connection', (c) => {
-            conn = c;
-            myRole = 'w'; // المستضيف بيلعب أبيض
-            setupConnListeners();
-            $('#conn-status').text('متصل (أنت الأبيض)').css('color', '#00ffcc');
+        peer.on('open', (id) => {
+            myId = id;
+            $('#conn-status').text('جاهز! انسخ الرابط وابعته لصاحبك.');
+            const urlParams = new URLSearchParams(window.location.search);
+            const joinId = urlParams.get('join');
+            if (joinId) connectToPeer(joinId);
         });
 
-        function connectToPeer() {
-            let id = $('#peer-id-input').val();
-            if (!id) return alert("حط الـ ID الأول يا هندسة!");
-            conn = peer.connect(id);
-            myRole = 'b'; // اللي بيتصل بيلعب أسود
+        peer.on('connection', (c) => {
+            conn = c; myRole = 'w';
             setupConnListeners();
-            $('#conn-status').text('متصل (أنت الأسود)').css('color', '#00ffcc');
+            $('#conn-status').text('تم الاتصال! أنت تلعب بالأبيض.').css('color', '#00ffcc');
+            updateUI();
+        });
+
+        function connectToPeer(id) {
+            conn = peer.connect(id); myRole = 'b';
+            setupConnListeners();
+            $('#conn-status').text('تم الاتصال! أنت تلعب بالأسود.').css('color', '#00ffcc');
+            updateUI();
+        }
+
+        function copyInviteLink() {
+            if (!myId) return alert("انتظر ثانية حتى يجهز النظام.");
+            const link = window.location.origin + window.location.pathname + "?join=" + myId;
+            navigator.clipboard.writeText(link).then(() => {
+                alert("تم نسخ الرابط! ابعته لصاحبك على الواتساب.");
+            });
         }
 
         function setupConnListeners() {
             conn.on('data', (data) => {
                 if (data.type === 'move') {
                     game.load(data.fen);
-                    moveStep = data.moveStep;
-                    seriesLimit = data.seriesLimit;
-                    movesDone = data.movesDone;
-                    currentMode = data.mode;
-                    historyState.push(game.fen());
-                    currentIdx = historyState.length - 1;
-                    syncTabsUI();
-                    updateUI();
-                } else if (data.type === 'reset') {
-                    resetGame(false);
-                } else if (data.type === 'mode') {
-                    setMode(data.mode, false);
-                }
+                    moveStep = data.moveStep; seriesLimit = data.seriesLimit;
+                    movesDone = data.movesDone; currentMode = data.mode;
+                    historyState.push(game.fen()); currentIdx = historyState.length - 1;
+                    syncTabsUI(); updateUI();
+                } else if (data.type === 'reset') { resetGame(false); }
+                else if (data.type === 'mode') { setMode(data.mode, false); }
             });
         }
 
         function changeMode(m) { setMode(m, true); }
-
         function setMode(mode, broadcast) {
-            currentMode = mode;
-            syncTabsUI();
+            currentMode = mode; syncTabsUI();
             if (broadcast && conn) conn.send({type: 'mode', mode: mode});
             resetGame(broadcast);
         }
-
         function syncTabsUI() {
             $(".tabs button").removeClass("active");
-            let tabId = currentMode === 'standard' ? 'std' : (currentMode === 'marseille' ? 'mar' : (currentMode === 'progressive' ? 'prog' : 'free'));
-            $("#tab-" + tabId).addClass("active");
+            let id = currentMode === 'standard' ? 'std' : (currentMode === 'marseille' ? 'mar' : (currentMode === 'progressive' ? 'prog' : 'free'));
+            $("#tab-" + id).addClass("active");
         }
 
         function resetGame(broadcast) {
-            game = new Chess();
-            moveStep = 1; seriesLimit = 1; movesDone = 0;
-            historyState = [game.fen()];
-            currentIdx = 0;
+            game = new Chess(); moveStep = 1; seriesLimit = 1; movesDone = 0;
+            historyState = [game.fen()]; currentIdx = 0;
             $("#log").empty();
             if (broadcast && conn) conn.send({type: 'reset'});
             updateUI();
         }
-
         function broadcastReset() { resetGame(true); }
 
         function onDragStart(s, p) {
             if (game.game_over() || currentIdx !== historyState.length - 1) return false;
-            // منع اللعب في غير دورك أونلاين
             if (conn && game.turn() !== myRole) return false;
             if ((game.turn() === 'w' && p.search(/^b/) !== -1) || (game.turn() === 'b' && p.search(/^w/) !== -1)) return false;
         }
@@ -174,19 +166,7 @@
 
             historyState.push(game.fen());
             currentIdx = historyState.length - 1;
-            
-            // إرسال النقلة للطرف التاني
-            if (conn) {
-                conn.send({
-                    type: 'move',
-                    fen: game.fen(),
-                    moveStep: moveStep,
-                    seriesLimit: seriesLimit,
-                    movesDone: movesDone,
-                    mode: currentMode
-                });
-            }
-
+            if (conn) conn.send({ type: 'move', fen: game.fen(), moveStep: moveStep, seriesLimit: seriesLimit, movesDone: movesDone, mode: currentMode });
             updateUI();
         }
 
@@ -204,8 +184,8 @@
         function updateUI() {
             var p = (game.turn() === 'w' ? 'الأبيض' : 'الأسود');
             var status = (currentMode === 'standard') ? `دور ${p}` : 
-                         (currentMode === 'progressive') ? `دور ${p} - نقلة ${movesDone + 1}/${seriesLimit}` : 
-                         `دور ${p} - نقلة ${moveStep}/2`;
+                         (currentMode === 'progressive') ? `دور ${p} (${movesDone + 1}/${seriesLimit})` : 
+                         `دور ${p} (نقلة ${moveStep}/2)`;
             if (game.in_checkmate()) status = "كش ملك! انتهى الجيم.";
             $("#status-txt").text(status);
             board.position(game.fen());
@@ -221,7 +201,7 @@
                 draggable: true, position: 'start', onDragStart: onDragStart, onDrop: onDrop,
                 pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
             });
-            setMode('standard', false);
+            updateUI();
         });
     </script>
 </body>
