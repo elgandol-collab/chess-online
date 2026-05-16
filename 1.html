@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>Chess Online - PeerJS Edition</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css">
+    <style>
+        :root { --accent: #00ffcc; --bg: #050505; --panel: #111; --danger: #ff3333; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: #fff; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
+        
+        /* لوحة الاتصال */
+        .online-panel { background: var(--panel); padding: 15px; border-radius: 12px; border: 1px solid #333; margin-bottom: 15px; width: 100%; max-width: 840px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .id-box { background: #000; padding: 8px; border: 1px solid var(--accent); color: var(--accent); border-radius: 5px; font-family: monospace; font-size: 1.1em; }
+        input { padding: 8px; border-radius: 5px; border: 1px solid #444; background: #222; color: #fff; flex: 1; }
+        .btn-conn { padding: 8px 15px; background: var(--accent); color: #000; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
+
+        .tabs { display: flex; gap: 8px; background: var(--panel); padding: 12px; border-radius: 12px; border: 1px solid #333; margin-bottom: 15px; flex-wrap: wrap; justify-content: center; }
+        .tabs button { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; background: #222; color: #888; transition: 0.3s; }
+        .tabs button.active { background: var(--accent); color: #000; box-shadow: 0 0 15px var(--accent); }
+
+        .main-wrapper { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 1100px; }
+        #board { width: 480px; border: 6px solid #222; border-radius: 4px; box-shadow: 0 10px 50px rgba(0,0,0,0.8); }
+        .sidebar { width: 340px; background: var(--panel); padding: 20px; border-radius: 15px; border: 1px solid #333; height: 500px; display: flex; flex-direction: column; box-sizing: border-box; }
+        .status-box { background: #000; padding: 15px; border-radius: 10px; border: 1px solid var(--accent); text-align: center; margin-bottom: 15px; }
+        #status-txt { font-weight: bold; color: var(--accent); font-size: 1.1em; }
+        .log { flex-grow: 1; overflow-y: auto; background: #000; padding: 10px; font-family: monospace; font-size: 14px; color: #aaa; border: 1px solid #222; border-radius: 5px; }
+        .nav-btn { flex: 1; padding: 10px; cursor: pointer; border: none; border-radius: 4px; background: var(--accent); color: #000; font-weight: bold; font-size: 20px; }
+        .reset-btn { margin-top: 10px; padding: 12px; background: var(--danger); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; }
+    </style>
+</head>
+<body>
+
+    <div class="online-panel">
+        <div>الـ ID بتاعك: <span id="my-id" class="id-box">جاري التوليد...</span></div>
+        <input type="text" id="peer-id-input" placeholder="حط ID صاحبك هنا">
+        <button class="btn-conn" onclick="connectToPeer()">اتصال (Connect)</button>
+        <span id="conn-status" style="color: #888; font-size: 0.9em;">غير متصل</span>
+    </div>
+
+    <div class="tabs">
+        <button id="tab-std" onclick="changeMode('standard')">شطرنج عادي</button>
+        <button id="tab-free" onclick="changeMode('pawnfree')">حرية بيادق (2-2)</button>
+        <button id="tab-mar" onclick="changeMode('marseille')">مارسيليا صارم</button>
+        <button id="tab-prog" onclick="changeMode('progressive')">تراكمي (1-2..)</button>
+    </div>
+
+    <div class="main-wrapper">
+        <div id="board"></div>
+        <div class="sidebar">
+            <div class="status-box"><div id="status-txt">تحميل...</div></div>
+            <div id="log" class="log"></div>
+            <div style="display:flex; gap:5px; margin-top:10px;">
+                <button class="nav-btn" onclick="goStart()">«</button>
+                <button class="nav-btn" onclick="goPrev()">‹</button>
+                <button class="nav-btn" onclick="goNext()">›</button>
+                <button class="nav-btn" onclick="goLast()">»</button>
+            </div>
+            <button class="reset-btn" onclick="broadcastReset()">إعادة بدء المباراة</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+
+    <script>
+        var board = null, game = new Chess();
+        var currentMode = 'standard', moveStep = 1, seriesLimit = 1, movesDone = 0;
+        var historyState = [], currentIdx = 0;
+        
+        // PeerJS Setup
+        var peer = new Peer(); 
+        var conn = null;
+        var myRole = null; // 'w' or 'b'
+
+        peer.on('open', (id) => { $('#my-id').text(id); });
+
+        // استقبال الاتصال
+        peer.on('connection', (c) => {
+            conn = c;
+            myRole = 'w'; // المستضيف بيلعب أبيض
+            setupConnListeners();
+            $('#conn-status').text('متصل (أنت الأبيض)').css('color', '#00ffcc');
+        });
+
+        function connectToPeer() {
+            let id = $('#peer-id-input').val();
+            if (!id) return alert("حط الـ ID الأول يا هندسة!");
+            conn = peer.connect(id);
+            myRole = 'b'; // اللي بيتصل بيلعب أسود
+            setupConnListeners();
+            $('#conn-status').text('متصل (أنت الأسود)').css('color', '#00ffcc');
+        }
+
+        function setupConnListeners() {
+            conn.on('data', (data) => {
+                if (data.type === 'move') {
+                    game.load(data.fen);
+                    moveStep = data.moveStep;
+                    seriesLimit = data.seriesLimit;
+                    movesDone = data.movesDone;
+                    currentMode = data.mode;
+                    historyState.push(game.fen());
+                    currentIdx = historyState.length - 1;
+                    syncTabsUI();
+                    updateUI();
+                } else if (data.type === 'reset') {
+                    resetGame(false);
+                } else if (data.type === 'mode') {
+                    setMode(data.mode, false);
+                }
+            });
+        }
+
+        function changeMode(m) { setMode(m, true); }
+
+        function setMode(mode, broadcast) {
+            currentMode = mode;
+            syncTabsUI();
+            if (broadcast && conn) conn.send({type: 'mode', mode: mode});
+            resetGame(broadcast);
+        }
+
+        function syncTabsUI() {
+            $(".tabs button").removeClass("active");
+            let tabId = currentMode === 'standard' ? 'std' : (currentMode === 'marseille' ? 'mar' : (currentMode === 'progressive' ? 'prog' : 'free'));
+            $("#tab-" + tabId).addClass("active");
+        }
+
+        function resetGame(broadcast) {
+            game = new Chess();
+            moveStep = 1; seriesLimit = 1; movesDone = 0;
+            historyState = [game.fen()];
+            currentIdx = 0;
+            $("#log").empty();
+            if (broadcast && conn) conn.send({type: 'reset'});
+            updateUI();
+        }
+
+        function broadcastReset() { resetGame(true); }
+
+        function onDragStart(s, p) {
+            if (game.game_over() || currentIdx !== historyState.length - 1) return false;
+            // منع اللعب في غير دورك أونلاين
+            if (conn && game.turn() !== myRole) return false;
+            if ((game.turn() === 'w' && p.search(/^b/) !== -1) || (game.turn() === 'b' && p.search(/^w/) !== -1)) return false;
+        }
+
+        function onDrop(source, target) {
+            let startedCheck = game.in_check();
+            let move = game.move({ from: source, to: target, promotion: 'q' });
+            if (move === null) return 'snapback';
+
+            addLog(move.san);
+            let deliveredCheck = game.in_check();
+
+            if (currentMode === 'pawnfree') {
+                if (moveStep === 1 && !deliveredCheck && !game.game_over()) {
+                    moveStep = 2; forceKeepTurn();
+                } else { moveStep = 1; }
+            } else if (currentMode === 'marseille') {
+                if (game.history().length === 1) { moveStep = 1; }
+                else if (moveStep === 1) {
+                    if (deliveredCheck || startedCheck || game.game_over()) { moveStep = 1; }
+                    else { moveStep = 2; forceKeepTurn(); }
+                } else { moveStep = 1; }
+            } else if (currentMode === 'progressive') {
+                movesDone++;
+                if (deliveredCheck || movesDone >= seriesLimit || game.game_over()) {
+                    seriesLimit++; movesDone = 0;
+                } else { forceKeepTurn(); }
+            }
+
+            historyState.push(game.fen());
+            currentIdx = historyState.length - 1;
+            
+            // إرسال النقلة للطرف التاني
+            if (conn) {
+                conn.send({
+                    type: 'move',
+                    fen: game.fen(),
+                    moveStep: moveStep,
+                    seriesLimit: seriesLimit,
+                    movesDone: movesDone,
+                    mode: currentMode
+                });
+            }
+
+            updateUI();
+        }
+
+        function forceKeepTurn() {
+            var f = game.fen().split(' ');
+            f[1] = (f[1] === 'w' ? 'b' : 'w'); f[3] = '-';
+            game.load(f.join(' '));
+        }
+
+        function addLog(san) {
+            var p = (game.turn() === 'b' ? 'الأبيض' : 'الأسود');
+            $("#log").prepend(`<div><b>${p}:</b> ${san}</div>`);
+        }
+
+        function updateUI() {
+            var p = (game.turn() === 'w' ? 'الأبيض' : 'الأسود');
+            var status = (currentMode === 'standard') ? `دور ${p}` : 
+                         (currentMode === 'progressive') ? `دور ${p} - نقلة ${movesDone + 1}/${seriesLimit}` : 
+                         `دور ${p} - نقلة ${moveStep}/2`;
+            if (game.in_checkmate()) status = "كش ملك! انتهى الجيم.";
+            $("#status-txt").text(status);
+            board.position(game.fen());
+        }
+
+        function goStart() { currentIdx = 0; board.position(historyState[0]); }
+        function goPrev() { if (currentIdx > 0) { currentIdx--; board.position(historyState[currentIdx]); } }
+        function goNext() { if (currentIdx < historyState.length - 1) { currentIdx++; board.position(historyState[currentIdx]); } }
+        function goLast() { currentIdx = historyState.length - 1; board.position(historyState[currentIdx]); }
+
+        $(document).ready(function() {
+            board = Chessboard('board', {
+                draggable: true, position: 'start', onDragStart: onDragStart, onDrop: onDrop,
+                pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
+            });
+            setMode('standard', false);
+        });
+    </script>
+</body>
+</html>
