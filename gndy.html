@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>Chess Master - منصة الكابتن عصام الجندي</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css">
+    <style>
+        :root { --accent: #00ffcc; --bg: #050505; --panel: #111; --danger: #ff3333; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: #fff; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
+
+        /* ══ لوحة الغرفة - تم تصغيرها وتنسيقها ══ */
+        .room-panel {
+            background: var(--panel); padding: 10px 16px; border-radius: 12px;
+            border: 1px solid #333; margin-bottom: 12px;
+            width: 100%; max-width: 1100px; display: flex; gap: 14px;
+            align-items: center; flex-wrap: wrap; justify-content: space-between;
+            box-sizing: border-box;
+        }
+        .room-section { display: flex; flex-direction: column; gap: 3px; }
+        .room-label { font-size: .65em; color: #777; letter-spacing: 0.5px; }
+
+        /* رقم الغرفة */
+        .room-number-display {
+            font-family: monospace; font-size: 1.5em; font-weight: bold;
+            color: var(--accent); background: #000;
+            border: 1.5px solid var(--accent); border-radius: 6px;
+            padding: 4px 12px; letter-spacing: 4px;
+            cursor: pointer; transition: .2s; user-select: all;
+        }
+        .room-number-display:hover { box-shadow: 0 0 10px rgba(0,255,204,.3); }
+        .room-number-display.copied { border-color: #fff; color: #fff; }
+
+        /* حقل إدخال الغرفة */
+        .room-input {
+            font-family: monospace; font-size: 1.3em; font-weight: bold;
+            width: 80px; text-align: center; letter-spacing: 2px;
+            padding: 4px 8px; border-radius: 6px;
+            border: 1.5px solid #444; background: #000; color: var(--accent);
+            outline: none; transition: .2s;
+        }
+        .room-input:focus { border-color: var(--accent); box-shadow: 0 0 8px rgba(0,255,204,.2); }
+
+        .btn-join { padding: 6px 14px; background: var(--accent); color: #000; border: none; border-radius: 6px; font-weight: bold; font-size: 0.9em; cursor: pointer; transition: .2s; white-space: nowrap; }
+        .btn-join:hover { background: #00e6b8; box-shadow: 0 0 10px rgba(0,255,204,.3); }
+
+        .divider { width: 1px; height: 35px; background: #222; margin: 0 2px; }
+
+        .conn-status-badge {
+            padding: 4px 10px; border-radius: 6px; font-size: .75em; font-weight: bold;
+            background: #0a0a0a; border: 1px solid #333; color: #666;
+            transition: .3s; white-space: nowrap; text-align: center;
+        }
+        .conn-status-badge.online { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 8px rgba(0,255,204,.1); }
+        .conn-status-badge.waiting { border-color: #ffaa00; color: #ffaa00; }
+
+        /* شريط التعليمات */
+        .hint-bar {
+            width: 100%; max-width: 1100px; margin-bottom: 10px;
+            background: #0a1a10; border: 1px solid #1a3a20; border-radius: 8px;
+            padding: 6px 12px; font-size: .75em; color: #4a8a6a;
+            display: flex; gap: 14px; flex-wrap: wrap; align-items: center; justify-content: center;
+            box-sizing: border-box;
+        }
+        .hint-step { display: flex; align-items: center; gap: 5px; }
+        .hint-num { background: var(--accent); color: #000; border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: .8em; flex-shrink: 0; }
+
+        /* أزرار الأطوار */
+        .tabs { display: flex; gap: 6px; background: var(--panel); padding: 8px; border-radius: 10px; border: 1px solid #333; margin-bottom: 12px; flex-wrap: wrap; justify-content: center; }
+        .tabs button { padding: 6px 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 0.85em; background: #222; color: #888; transition: 0.3s; }
+        .tabs button.active { background: var(--accent); color: #000; box-shadow: 0 0 10px var(--accent); }
+
+        .main-wrapper { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 1100px; align-items: flex-start; }
+
+        /* تكبير الرقعة وتنسيق المحاذاة */
+        .board-area { display: flex; gap: 10px; align-items: stretch; }
+        #board { width: 680px; border: 6px solid #222; border-radius: 4px; box-shadow: 0 10px 50px rgba(0,0,0,0.8); flex-shrink: 0; }
+
+        .side-clocks { display: flex; flex-direction: column; justify-content: space-between; width: 85px; }
+        .clock-box { background: #000; border: 2px solid #333; border-radius: 8px; padding: 10px 4px; text-align: center; flex: 1; display: flex; flex-direction: column; justify-content: center; }
+        .clock-box:first-child { margin-bottom: 8px; }
+        .clock-box.active { border-color: var(--accent); box-shadow: 0 0 14px rgba(0,255,204,.4); }
+        .clock-box.low { border-color: var(--danger); animation: pulse .7s infinite; }
+        .clock-label { font-size: .6em; color: #555; margin-bottom: 4px; letter-spacing: 1px; }
+        .clock-time { font-family: monospace; font-size: 1.2em; font-weight: bold; color: var(--accent); word-break: break-all; }
+        .clock-box.low .clock-time { color: var(--danger); }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+        /* الشريط الجانبي وتصغير عناصره */
+        .sidebar { width: 280px; background: var(--panel); padding: 12px; border-radius: 12px; border: 1px solid #333; display: flex; flex-direction: column; box-sizing: border-box; }
+        .status-box { background: #000; padding: 8px; border-radius: 8px; border: 1px solid var(--accent); text-align: center; margin-bottom: 10px; }
+        #status-txt { font-weight: bold; color: var(--accent); font-size: 0.95em; }
+        .log { overflow-y: auto; background: #000; padding: 8px; font-family: monospace; font-size: 12px; color: #aaa; border: 1px solid #222; border-radius: 5px; max-height: 150px; }
+        
+        .nav-btn { flex: 1; padding: 6px; cursor: pointer; border: none; border-radius: 4px; background: var(--accent); color: #000; font-weight: bold; font-size: 16px; }
+        .reset-btn { margin-top: 8px; padding: 8px; background: var(--danger); color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 0.9em; cursor: pointer; width: 100%; }
+
+        .time-ctrl { display: flex; gap: 4px; margin-bottom: 10px; flex-wrap: wrap; }
+        .time-ctrl select, .time-ctrl button { padding: 4px 6px; background: #222; color: #fff; border: 1px solid #444; border-radius: 5px; cursor: pointer; font-size: .75em; }
+        .time-ctrl button { background: #1a3a2a; color: var(--accent); border-color: var(--accent); font-weight: bold; }
+        .time-ctrl button:hover { background: #0a2a1a; }
+
+        .flip-btn { padding: 5px 10px; background: #222; color: var(--accent); border: 1px solid var(--accent); border-radius: 5px; cursor: pointer; font-weight: bold; font-size: .8em; white-space: nowrap; }
+        .flip-btn:hover { background: #1a3a2a; }
+
+        /* صندوق الدردشة */
+        .chat-box { background: #000; border: 1px solid #222; border-radius: 8px; margin-top: 8px; display: flex; flex-direction: column; max-height: 140px; }
+        .chat-header { padding: 4px 8px; border-bottom: 1px solid #222; font-size: .68em; color: #555; display: flex; justify-content: space-between; align-items: center; }
+        .chat-msgs { flex: 1; overflow-y: auto; padding: 4px 6px; font-size: .75em; min-height: 50px; }
+        .chat-msgs::-webkit-scrollbar { width: 3px; }
+        .chat-msgs::-webkit-scrollbar-thumb { background: #333; }
+        .chat-msg { margin-bottom: 3px; line-height: 1.3; }
+        .chat-msg .who { font-weight: bold; margin-left: 4px; }
+        .chat-msg.me .who { color: var(--accent); }
+        .chat-msg.opp .who { color: #aaa; }
+        .chat-input-row { display: flex; gap: 4px; padding: 4px; border-top: 1px solid #222; }
+        .chat-input { flex: 1; background: #111; border: 1px solid #333; border-radius: 4px; color: #fff; padding: 4px 6px; font-size: .75em; outline: none; }
+        .chat-input:focus { border-color: var(--accent); }
+        .chat-send { background: var(--accent); color: #000; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-weight: bold; font-size: .75em; }
+
+        .voice-bar { display: flex; gap: 6px; align-items: center; margin-top: 6px; background: #000; border: 1px solid #222; border-radius: 8px; padding: 6px 8px; }
+        .voice-btn { padding: 4px 10px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: .75em; transition: .2s; }
+        .voice-btn.off { background: #222; color: #666; border: 1px solid #444; }
+        .voice-btn.on  { background: #1a3a2a; color: var(--accent); border: 1px solid var(--accent); box-shadow: 0 0 6px rgba(0,255,204,.2); }
+        .mic-indicator { width: 6px; height: 6px; border-radius: 50%; background: #333; transition: .3s; }
+        .mic-indicator.active { background: var(--accent); box-shadow: 0 0 6px var(--accent); animation: pulse .8s infinite; }
+        .voice-status { font-size: .68em; color: #555; flex: 1; }
+
+        @media(max-width:900px) {
+            #board { width: calc(100vw - 120px); }
+            .sidebar { width: calc(100vw - 32px); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="room-panel">
+
+        <div class="room-section">
+            <div class="room-label">رقم غرفتك (شاركه للصديق)</div>
+            <div class="room-number-display" id="my-room" onclick="copyRoomNumber()" title="اضغط للنسخ">----</div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="room-section">
+            <div class="room-label">انضم لغرفة الصديق</div>
+            <div style="display:flex; gap:6px; align-items:center;">
+                <input class="room-input" id="room-input" type="text"
+                       maxlength="4" placeholder="0000"
+                       oninput="this.value=this.value.replace(/\D/g,'')"
+                       onkeydown="if(event.key==='Enter') joinRoom()">
+                <button class="btn-join" onclick="joinRoom()">انضم ▶</button>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="room-section" style="gap:6px; flex-direction: row; align-items: center;">
+            <div class="conn-status-badge waiting" id="conn-status">⏳ في انتظار صديق...</div>
+            <button class="flip-btn" onclick="flipBoard()">&#8645; قلب الرقعة</button>
+            
+            <div style="display: flex; align-items: center; gap: 8px; background: #0a1510; padding: 3px 10px 3px 3px; border-radius: 30px; border: 1px solid var(--accent); box-shadow: 0 0 8px rgba(0,255,204,0.1);">
+                <img src="profile.jpg" 
+                     alt="Captain Essam" 
+                     style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 1.5px solid var(--accent); background: #222;">
+                <span style="color: var(--accent); font-weight: bold; font-size: 0.85em; text-shadow: 0 0 6px rgba(0,255,204,0.3); white-space: nowrap;">منصة الكابتن عصام الجندي</span>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="hint-bar">
+        <div class="hint-step"><div class="hint-num">1</div> افتح التطبيق عند الصديق</div>
+        <div class="hint-step"><div class="hint-num">2</div> شارك رقم غرفتك المكوّن من 4 أرقام</div>
+        <div class="hint-step"><div class="hint-num">3</div> الصديق يكتب الرقم ويضغط "انضم"</div>
+        <div class="hint-step"><div class="hint-num">4</div> أنت الأبيض ← صديقك الأسود</div>
+    </div>
+
+    <div class="tabs">
+        <button id="tab-std"  onclick="changeMode('standard')">شطرنج عادي</button>
+        <button id="tab-free" onclick="changeMode('pawnfree')">حرية بيادق (2-2)</button>
+        <button id="tab-mar"  onclick="changeMode('marseille')">مارسيليا صارم</button>
+        <button id="tab-prog" onclick="changeMode('progressive')">تراكمي (1-2..)</button>
+        <button id="tab-bot"  onclick="startBotMode()" style="color: #ffaa00;">ضد الكمبيوتر 🤖</button>
+    </div>
+
+    <div class="main-wrapper">
+        <div class="board-area">
+            <div class="side-clocks">
+                <div class="clock-box" id="clock-b">
+                    <div class="clock-label">BLACK</div>
+                    <div class="clock-time" id="time-b">05:00</div>
+                </div>
+                <div class="clock-box active" id="clock-w">
+                    <div class="clock-label">WHITE</div>
+                    <div class="clock-time" id="time-w">05:00</div>
+                </div>
+            </div>
+            <div id="board"></div>
+        </div>
+
+        <div class="sidebar">
+            <div class="time-ctrl">
+                <select id="time-select">
+                    <option value="60">1 دقيقة</option>
+                    <option value="180">3 دقائق</option>
+                    <option value="300" selected>5 دقائق</option>
+                    <option value="600">10 دقائق</option>
+                    <option value="900">15 دقيقة</option>
+                    <option value="1800">30 دقيقة</option>
+                    <option value="0">بدون وقت</option>
+                </select>
+                <select id="inc-select">
+                    <option value="0">+0 ث</option>
+                    <option value="2">+2 ث</option>
+                    <option value="3">+3 ث</option>
+                    <option value="5">+5 ث</option>
+                    <option value="10">+10 ث</option>
+                </select>
+                <button onclick="applyTimeControl()">تطبيق</button>
+            </div>
+
+            <div class="status-box"><div id="status-txt">تحميل...</div></div>
+            <div id="log" class="log"></div>
+            <div style="display:flex; gap:5px; margin-top:8px;">
+                <button class="nav-btn" onclick="goStart()">«</button>
+                <button class="nav-btn" onclick="goPrev()">‹</button>
+                <button class="nav-btn" onclick="goNext()">›</button>
+                <button class="nav-btn" onclick="goLast()">»</button>
+            </div>
+            <button class="reset-btn" onclick="broadcastReset()">إعادة بدء المباراة</button>
+
+            <div class="voice-bar">
+                <div class="mic-indicator" id="mic-dot"></div>
+                <span class="voice-status" id="voice-status">الصوت متوقف</span>
+                <button class="voice-btn off" id="voice-btn" onclick="toggleVoice()">تفعيل الصوت</button>
+            </div>
+
+            <div class="chat-box">
+                <div class="chat-header">
+                    <span>CHAT</span>
+                    <span id="chat-conn-hint" style="color:#333">يتوفر عند الاتصال</span>
+                </div>
+                <div class="chat-msgs" id="chat-msgs"></div>
+                <div class="chat-input-row">
+                    <input class="chat-input" id="chat-input" placeholder="اكتب رسالة..."
+                           onkeydown="if(event.key==='Enter') sendChat()">
+                    <button class="chat-send" onclick="sendChat()">ارسل</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+
+    <script>
+    // ════════════════════════════════════════
+    //  الأصوات
+    // ════════════════════════════════════════
+    function makeBeep(freq, dur, vol) {
+        try {
+            var ctx = new (window.AudioContext || window.webkitAudioContext)();
+            var o = ctx.createOscillator(), g = ctx.createGain();
+            o.connect(g); g.connect(ctx.destination);
+            o.frequency.value = freq; o.type = 'sine';
+            g.gain.setValueAtTime(vol || 0.3, ctx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+            o.start(); o.stop(ctx.currentTime + dur);
+        } catch(e) {}
+    }
+    var sfx = {
+        move:    function() { makeBeep(440, 0.08, 0.25); },
+        capture: function() { makeBeep(220, 0.18, 0.4); setTimeout(function(){ makeBeep(180, 0.12, 0.25); }, 80); },
+        check:   function() { makeBeep(600, 0.1, 0.4); setTimeout(function(){ makeBeep(700, 0.15, 0.35); }, 110); },
+        end:     function() { [500,400,300].forEach(function(f,i){ setTimeout(function(){ makeBeep(f, 0.25, 0.4); }, i*200); }); }
+    };
+
+    // ════════════════════════════════════════
+    //  نظام الغرف — P2P
+    // ════════════════════════════════════════
+    var peer   = null;
+    var conn   = null;
+    var myRole = null;
+    var myRoomNumber = null;
+
+    function generateRoomNumber() {
+        return String(Math.floor(1000 + Math.random() * 9000));
+    }
+
+    function roomToPeerId(roomNum) {
+        return 'chessmaster-room-' + roomNum;
+    }
+
+    function initAsHost(roomNum) {
+        myRoomNumber = roomNum;
+        var peerId   = roomToPeerId(roomNum);
+        $('#my-room').text(roomNum);
+        setConnStatus('waiting', '⏳ في انتظار صديق...');
+
+        peer = new Peer(peerId);
+
+        peer.on('error', function(err) {
+            if (err.type === 'unavailable-id') {
+                var newRoom = generateRoomNumber();
+                setTimeout(function(){ initAsHost(newRoom); }, 300);
+            } else {
+                setConnStatus('', '⚠ خطأ: ' + err.type);
+            }
+        });
+
+        peer.on('open', function() {
+            peer.on('connection', function(c) {
+                conn   = c;
+                myRole = 'w';
+                setupConnListeners();
+                setConnStatus('online', '✓ متصل — أنت الأبيض ⬜');
+            });
+            peer.on('call', handleIncomingCall);
+        });
+    }
+
+    function joinRoom() {
+        var roomNum = $('#room-input').val().trim();
+        if (roomNum.length !== 4 || isNaN(roomNum)) {
+            alert('أدخل رقم الغرفة المكوّن من 4 أرقام بالضبط!');
+            return;
+        }
+        if (peer) { peer.destroy(); peer = null; }
+
+        myRoomNumber = roomNum;
+        peer = new Peer(); 
+
+        peer.on('open', function() {
+            var hostId = roomToPeerId(roomNum);
+            conn   = peer.connect(hostId, { reliable: true });
+            myRole = 'b';
+            setConnStatus('waiting', '⏳ جاري الاتصال...');
+            setupConnListeners();
+            peer.on('call', handleIncomingCall);
+        });
+
+        peer.on('error', function(err) {
+            setConnStatus('', '⚠ لم يُعثر على الغرفة ' + roomNum);
+        });
+    }
+
+    function setupConnListeners() {
+        conn.on('open', function() {
+            var label = myRole === 'w' ? '✓ متصل — أنت الأبيض ⬜' : '✓ متصل — أنت الأسود ⬛';
+            setConnStatus('online', label);
+            $('#chat-conn-hint').text('متصل').css('color', 'var(--accent)');
+        });
+
+        conn.on('data', function(data) {
+            if (data.type === 'move') {
+                game.load(data.fen);
+                moveStep    = data.moveStep;
+                seriesLimit = data.seriesLimit;
+                movesDone   = data.movesDone;
+                currentMode = data.mode;
+                if (typeof data.isFirstMove !== 'undefined') isFirstMove = data.isFirstMove;
+                if (data.timers) {
+                    timers       = data.timers;
+                    increment    = data.increment;
+                    timerStartTS = Date.now();
+                    activeColor  = data.activeColor;
+                    updateClockUI();
+                    renderClocks();
+                    
+                    // تشغيل عداد الوقت عند الطرف الآخر إذا لم يكن يعمل بعد
+                    if (totalTime > 0 && clockInterval === null) {
+                        clockInterval = setInterval(tickClock, 100);
+                    }
+                }
+                historyState.push(game.fen());
+                currentIdx = historyState.length - 1;
+                syncTabsUI();
+                updateUI();
+                playMoveSound(data.lastMoveFlags, data.inCheck);
+
+            } else if (data.type === 'reset') {
+                resetGame(false);
+            } else if (data.type === 'mode') {
+                setMode(data.mode, false);
+            } else if (data.type === 'timecontrol') {
+                totalTime = data.totalTime;
+                increment = data.increment;
+                timers    = { w: totalTime, b: totalTime };
+                stopClock();
+                renderClocks();
+                updateClockUI();
+            } else if (data.type === 'chat') {
+                appendChat(data.text, false);
+            }
+        });
+
+        conn.on('close', function() {
+            setConnStatus('', '⚠ انقطع الاتصال');
+            conn = null;
+        });
+    }
+
+    function copyRoomNumber() {
+        if (!myRoomNumber) return;
+        navigator.clipboard.writeText(myRoomNumber).then(function() {
+            var el = $('#my-room');
+            el.addClass('copied').text('✓ تم النسخ');
+            setTimeout(function(){ el.removeClass('copied').text(myRoomNumber); }, 1500);
+        }).catch(function() { prompt('رقم الغرفة:', myRoomNumber); });
+    }
+
+    function setConnStatus(type, label) {
+        var el = $('#conn-status');
+        el.text(label).removeClass('online waiting');
+        if (type) el.addClass(type);
+    }
+
+    // ════════════════════════════════════════
+    //  منطق اللعب
+    // ════════════════════════════════════════
+    var board = null, game = new Chess();
+    var currentMode = 'standard', moveStep = 1, seriesLimit = 1, movesDone = 0;
+    var historyState = [], currentIdx = 0;
+    var isFirstMove = true; 
+
+    var engine = null;
+    var isBotMode = false;
+    var botDepth = 10;
+
+    function startBotMode() {
+        isBotMode = true;
+        currentMode = 'bot';
+        
+        $(".tabs button").removeClass("active");
+        $("#tab-bot").addClass("active");
+        
+        if (conn) { conn.close(); conn = null; }
+        if (peer) { peer.destroy(); peer = null; }
+        setConnStatus('', '🤖 تلعب الآن ضد الكمبيوتر');
+
+        if (!engine) {
+            var stockfishUrl = 'https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js';
+            fetch(stockfishUrl)
+                .then(function(response) { return response.text(); })
+                .then(function(script) {
+                    var blob = new Blob([script], {type: 'application/javascript'});
+                    var workerUrl = URL.createObjectURL(blob);
+                    engine = new Worker(workerUrl);
+
+                    engine.onmessage = function(event) {
+                        var line = event.data;
+                        if (line && typeof line === 'string' && line.indexOf('bestmove') > -1) {
+                            var match = line.match(/^bestmove ([a-h][1-8])([a-h][1-8])([qrbn])?/);
+                            if (match) {
+                                makeBotMoveOnBoard(match[1], match[2], match[3]);
+                            }
+                        }
+                    };
+                    engine.postMessage('uci');
+                    engine.postMessage('isready');
+                })
+                .catch(function(err) {
+                    $("#status-txt").text('⚠ خطأ في تحميل المحرك محلياً');
+                });
+        }
+        resetGame(false);
+    }
+
+    function changeMode(m) { setMode(m, true); }
+
+    function setMode(mode, broadcast) {
+        currentMode = mode;
+        isBotMode = false;
+        syncTabsUI();
+        if (broadcast && conn) conn.send({ type: 'mode', mode: mode });
+        resetGame(broadcast);
+    }
+
+    function syncTabsUI() {
+        $(".tabs button").removeClass("active");
+        var tabId = currentMode === 'standard' ? 'std' :
+                    currentMode === 'marseille' ? 'mar' :
+                    currentMode === 'progressive' ? 'prog' : 
+                    currentMode === 'bot' ? 'bot' : 'free';
+        $("#tab-" + tabId).addClass("active");
+    }
+
+    function resetGame(broadcast) {
+        game = new Chess();
+        moveStep = 1; seriesLimit = 1; movesDone = 0;
+        isFirstMove = true;
+        historyState = [game.fen()];
+        currentIdx = 0;
+        $("#log").empty();
+        if (broadcast && conn) conn.send({ type: 'reset' });
+        resetTimers();
+        updateUI();
+    }
+
+    function broadcastReset() { resetGame(true); }
+
+    function onDragStart(s, p) {
+        if (game.game_over() || currentIdx !== historyState.length - 1) return false;
+        if (conn && game.turn() !== myRole) return false;
+        if (isBotMode && game.turn() !== 'w') return false; 
+        if ((game.turn() === 'w' && p.search(/^b/) !== -1) ||
+            (game.turn() === 'b' && p.search(/^w/) !== -1)) return false;
+    }
+
+    function onDrop(source, target) {
+        var startedCheck = game.in_check();
+        var move = game.move({ from: source, to: target, promotion: 'q' });
+        if (move === null) return 'snapback';
+
+        addLog(move.san);
+        var deliveredCheck = game.in_check();
+        var seriesEnded = false;
+
+        if (currentMode === 'pawnfree') {
+            if (moveStep === 1 && !deliveredCheck && !game.game_over()) {
+                moveStep = 2; forceKeepTurn();
+            } else { moveStep = 1; seriesEnded = true; }
+
+        } else if (currentMode === 'marseille') {
+            if (isFirstMove) {
+                isFirstMove = false;
+                moveStep = 1; seriesEnded = true;
+            } else if (moveStep === 1) {
+                if (deliveredCheck || startedCheck || game.game_over()) {
+                    moveStep = 1; seriesEnded = true;
+                } else {
+                    moveStep = 2; forceKeepTurn();
+                }
+            } else {
+                moveStep = 1; seriesEnded = true;
+            }
+
+        } else if (currentMode === 'progressive') {
+            movesDone++;
+            if (deliveredCheck || movesDone >= seriesLimit || game.game_over()) {
+                seriesLimit++; movesDone = 0; seriesEnded = true;
+            } else { forceKeepTurn(); }
+
+        } else {
+            seriesEnded = true;
+        }
+
+        historyState.push(game.fen());
+        currentIdx = historyState.length - 1;
+
+        playMoveSound(move.flags, deliveredCheck);
+
+        // تشغيل الساعة فور لعب أول نقلة في الجيم إذا لم تكن تعمل
+        if (totalTime > 0 && clockInterval === null) {
+            timerStartTS = Date.now();
+            clockInterval = setInterval(tickClock, 100);
+        }
+
+        if (seriesEnded) {
+            switchClock();
+        } else {
+            // نقلة وسيطة في الأدوار المتعددة: نخصم الوقت الفعلي الحالي لتحديث العداد بدقة عند الطرف الآخر
+            if (timerStartTS !== null) {
+                var elapsed = (Date.now() - timerStartTS) / 1000;
+                timers[activeColor] = Math.max(0, timers[activeColor] - elapsed);
+                timerStartTS = Date.now();
+            }
+        }
+
+        if (conn) {
+            conn.send({
+                type: 'move', fen: game.fen(),
+                moveStep: moveStep, seriesLimit: seriesLimit, movesDone: movesDone, mode: currentMode,
+                isFirstMove: isFirstMove, timers: timers, increment: increment, activeColor: activeColor,
+                lastMoveFlags: move.flags, inCheck: deliveredCheck
+            });
+        }
+
+        updateUI();
+        
+        if (game.game_over()) { 
+            sfx.end(); stopClock(); 
+        } else {
+            if (isBotMode && game.turn() === 'b') {
+                setTimeout(askBotToMove, 250);
+            }
+        }
+    }
+
+    function forceKeepTurn() {
+        var f = game.fen().split(' ');
+        f[1] = (f[1] === 'w' ? 'b' : 'w'); f[3] = '-';
+        game.load(f.join(' '));
+    }
+
+    function playMoveSound(flags, inCheck) {
+        if (game.in_checkmate()) sfx.end();
+        else if (inCheck) sfx.check();
+        else if (flags && (flags.includes('c') || flags.includes('e'))) sfx.capture();
+        else sfx.move();
+    }
+
+    function addLog(san) {
+        var p = (game.turn() === 'b' ? 'الأبيض' : 'الأسود');
+        $("#log").prepend('<div><b>' + p + ':</b> ' + san + '</div>');
+    }
+
+    function updateUI() {
+        var p = (game.turn() === 'w' ? 'الأبيض' : 'الأسود');
+        var status = currentMode === 'standard' || currentMode === 'bot' ? 'دور ' + p :
+                     currentMode === 'progressive' ? 'دور ' + p + ' - نقلة ' + (movesDone + 1) + '/' + seriesLimit :
+                                                     'دور ' + p + ' - نقلة ' + moveStep + '/2';
+        if (game.in_checkmate()) status = 'كش ملك! انتهى الجيم.';
+        $("#status-txt").text(status);
+        board.position(game.fen());
+    }
+
+    // أزرار التنقل التاريخي
+    function goStart() { currentIdx = 0; board.position(historyState[0]); }
+    function goPrev()  { if (currentIdx > 0) { currentIdx--; board.position(historyState[currentIdx]); } }
+    function goNext()  { if (currentIdx < historyState.length - 1) { currentIdx++; board.position(historyState[currentIdx]); } }
+    function goLast()  { currentIdx = historyState.length - 1; board.position(historyState[currentIdx]); }
+    function flipBoard() { board.flip(); }
+
+    // حساب نقلات المحرك
+    function makeBotMoveOnBoard(fromSquare, toSquare, promotionPiece) {
+        var move = game.move({ from: fromSquare, to: toSquare, promotion: promotionPiece || 'q' });
+        if (move) {
+            board.position(game.fen());
+            addLog(move.san);
+            playMoveSound(move.flags, game.in_check());
+            historyState.push(game.fen());
+            currentIdx = historyState.length - 1;
+            updateUI();
+            if (game.game_over()) { sfx.end(); stopClock(); } 
+            else { switchClock(move.color); }
+        }
+    }
+
+    function askBotToMove() {
+        if (game.game_over() || !engine) return;
+        engine.postMessage('position fen ' + game.fen());
+        engine.postMessage('go depth ' + botDepth);
+    }
+
+    // ════════════════════════════════════════
+    //  التايم كنترول
+    // ════════════════════════════════════════
+    var totalTime = 300, increment = 0;
+    var timers = { w: 300, b: 300 };
+    var activeColor = 'w';
+    var timerStartTS = null, clockInterval = null;
+
+    function applyTimeControl() {
+        var t   = parseInt($('#time-select').val());
+        var inc = parseInt($('#inc-select').val());
+        totalTime = t; increment = inc;
+        timers = { w: t, b: t }; activeColor = 'w';
+        stopClock(); renderClocks(); updateClockUI();
+        if (conn) conn.send({ type: 'timecontrol', totalTime: t, increment: inc });
+    }
+
+    function resetTimers() {
+        stopClock();
+        timers = { w: totalTime, b: totalTime };
+        activeColor = 'w'; timerStartTS = null;
+        renderClocks(); updateClockUI();
+        // تم إلغاء تشغيل الساعة هنا لتبدأ مجمدة وتعمل فقط فور النقلة الأولى
+    }
+
+    function updateClockUI() {
+        $('#clock-w').toggleClass('active', activeColor === 'w').removeClass('low');
+        $('#clock-b').toggleClass('active', activeColor === 'b').removeClass('low');
+    }
+
+    function startClock() {
+        if (totalTime === 0) return;
+        stopClock();
+        timerStartTS = Date.now();
+        clockInterval = setInterval(tickClock, 100);
+    }
+
+    function stopClock() { clearInterval(clockInterval); clockInterval = null; }
+
+    function tickClock() {
+        if (timerStartTS === null) return;
+        var elapsed   = (Date.now() - timerStartTS) / 1000;
+        var remaining = Math.max(0, timers[activeColor] - elapsed);
+        renderSingleClock(activeColor, remaining);
+        if (remaining < 30) $('#clock-' + activeColor).addClass('low');
+        if (remaining <= 0) {
+            stopClock(); timers[activeColor] = 0; sfx.end();
+            $("#status-txt").text((activeColor === 'w' ? 'الأسود' : 'الأبيض') + ' فاز بنفاد الوقت!');
+        }
+    }
+
+    function switchClock() {
+        if (totalTime === 0) return;
+        if (timerStartTS !== null) {
+            var elapsed = (Date.now() - timerStartTS) / 1000;
+            timers[activeColor] = Math.max(0, timers[activeColor] - elapsed) + increment;
+            renderSingleClock(activeColor, timers[activeColor]);
+        }
+        activeColor  = (activeColor === 'w') ? 'b' : 'w';
+        timerStartTS = Date.now();
+        updateClockUI();
+    }
+
+    function renderClocks() { renderSingleClock('w', timers.w); renderSingleClock('b', timers.b); }
+
+    function renderSingleClock(color, secs) {
+        if (totalTime === 0) { $('#time-' + color).text('∞'); return; }
+        var m = Math.floor(secs / 60).toString().padStart(2, '0');
+        var s = Math.floor(secs % 60).toString().padStart(2, '0');
+        $('#time-' + color).text(m + ':' + s);
+    }
+
+    // ════════════════════════════════════════
+    //  الدردشة
+    // ════════════════════════════════════════
+    function sendChat() {
+        var txt = $('#chat-input').val().trim();
+        if (!txt) return;
+        $('#chat-input').val('');
+        appendChat(txt, true);
+        if (conn && conn.open) conn.send({ type: 'chat', text: txt });
+    }
+    function appendChat(text, isMe) {
+        var who = isMe ? (myRole === 'w' ? 'أبيض' : 'أسود') : (myRole === 'w' ? 'أسود' : 'أبيض');
+        var cls = isMe ? 'me' : 'opp';
+        var el  = $('<div class="chat-msg ' + cls + '"><span class="who">' + who + ':</span></div>');
+        el.append($('<span>').text(text));
+        $('#chat-msgs').append(el);
+        $('#chat-msgs').scrollTop($('#chat-msgs')[0].scrollHeight);
+    }
+
+    // ════════════════════════════════════════
+    //  الصوت / المايك
+    // ════════════════════════════════════════
+    var localStream = null, mediaConn = null, voiceActive = false;
+    var remoteAudio = new Audio(); remoteAudio.autoplay = true;
+
+    function handleIncomingCall(call) {
+        navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then(function(stream) {
+            localStream = stream;
+            call.answer(stream);
+            mediaConn = call;
+            call.on('stream', function(rs) { remoteAudio.srcObject = rs; setVoiceUI(true); });
+        });
+    }
+
+    function toggleVoice() {
+        if (!voiceActive) {
+            navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then(function(stream) {
+                localStream = stream;
+                voiceActive = true;
+                setVoiceUI(true);
+                if (conn && conn.peer) {
+                    mediaConn = peer.call(conn.peer, stream);
+                    mediaConn.on('stream', function(rs) { remoteAudio.srcObject = rs; });
+                }
+            }).catch(function(err) {
+                alert("لم يتم العثور على مايكروفون أو تم رفض الصلاحية.");
+            });
+        } else {
+            if (localStream) { localStream.getTracks().forEach(t => t.stop()); }
+            if (mediaConn) { mediaConn.close(); }
+            voiceActive = false;
+            setVoiceUI(false);
+        }
+    }
+
+    function setVoiceUI(active) {
+        var btn = $('#voice-btn'), dot = $('#mic-dot'), st = $('#voice-status');
+        if (active) {
+            btn.removeClass('off').addClass('on').text('إيقاف الصوت');
+            dot.addClass('active');
+            st.text('الصوت يعمل');
+        } else {
+            btn.removeClass('on').addClass('off').text('تفعيل الصوت');
+            dot.removeClass('active');
+            st.text('الصوت متوقف');
+        }
+    }
+
+    // ════════════════════════════════════════
+    //  تشغيل الرقعة
+    // ════════════════════════════════════════
+    $(document).ready(function() {
+        board = Chessboard('board', {
+            pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png',
+            draggable: true,
+            position: 'start',
+            onDragStart: onDragStart,
+            onDrop: onDrop,
+            onSnapEnd: function() { board.position(game.fen()); }
+        });
+        updateUI();
+        initAsHost(generateRoomNumber());
+    });
+    </script>
+</body>
+</html>
