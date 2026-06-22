@@ -45,10 +45,12 @@
 
         .divider { width: 1px; height: 35px; background: #222; margin: 0 2px; }
 
+        /* تعديل البطاقة لمنع قص الكلمات وضمان محاذاة النص والإيموجي */
         .conn-status-badge {
-            padding: 4px 10px; border-radius: 6px; font-size: .75em; font-weight: bold;
+            display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+            height: 32px; padding: 0 12px; border-radius: 6px; font-size: .8em; font-weight: bold;
             background: #0a0a0a; border: 1px solid #333; color: #666;
-            transition: .3s; white-space: nowrap; text-align: center;
+            transition: .3s; white-space: nowrap; line-height: normal; box-sizing: border-box;
         }
         .conn-status-badge.online { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 8px rgba(0,255,204,.1); }
         .conn-status-badge.waiting { border-color: #ffaa00; color: #ffaa00; }
@@ -99,7 +101,13 @@
         .time-ctrl button { background: #1a3a2a; color: var(--accent); border-color: var(--accent); font-weight: bold; }
         .time-ctrl button:hover { background: #0a2a1a; }
 
-        .flip-btn { padding: 5px 10px; background: #222; color: var(--accent); border: 1px solid var(--accent); border-radius: 5px; cursor: pointer; font-weight: bold; font-size: .8em; white-space: nowrap; }
+        /* تعديل زر قلب الرقعة ليتناسق طوله وحجمه مع بطاقة الحالة تماماً */
+        .flip-btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+            height: 32px; padding: 0 12px; background: #222; color: var(--accent);
+            border: 1px solid var(--accent); border-radius: 5px; cursor: pointer;
+            font-weight: bold; font-size: .8em; white-space: nowrap; box-sizing: border-box; line-height: normal;
+        }
         .flip-btn:hover { background: #1a3a2a; }
 
         /* صندوق الدردشة */
@@ -159,11 +167,10 @@
             <div class="conn-status-badge waiting" id="conn-status">⏳ في انتظار صديق...</div>
             <button class="flip-btn" onclick="flipBoard()">&#8645; قلب الرقعة</button>
             
-            <!-- تم تعديل مسار الصورة ليقرأ محلياً بدقة ومتوافقة مع الحجم الجديد -->
-            <div style="display: flex; align-items: center; gap: 8px; background: #0a1510; padding: 3px 10px 3px 3px; border-radius: 30px; border: 1px solid var(--accent); box-shadow: 0 0 8px rgba(0,255,204,0.1);">
+            <div style="display: flex; align-items: center; gap: 8px; background: #0a1510; padding: 2px 10px 2px 2px; border-radius: 30px; border: 1px solid var(--accent); box-shadow: 0 0 8px rgba(0,255,204,0.1); height: 32px; box-sizing: border-box;">
                 <img src="profile.jpg" 
                      alt="Captain Essam" 
-                     style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 1.5px solid var(--accent); background: #222;">
+                     style="width: 26px; height: 26px; border-radius: 50%; object-fit: cover; border: 1.5px solid var(--accent); background: #222;">
                 <span style="color: var(--accent); font-weight: bold; font-size: 0.85em; text-shadow: 0 0 6px rgba(0,255,204,0.3); white-space: nowrap;">منصة الكابتن عصام الجندي</span>
             </div>
         </div>
@@ -370,6 +377,10 @@
                     activeColor  = data.activeColor;
                     updateClockUI();
                     renderClocks();
+                    
+                    if (totalTime > 0 && clockInterval === null) {
+                        clockInterval = setInterval(tickClock, 100);
+                    }
                 }
                 historyState.push(game.fen());
                 currentIdx = historyState.length - 1;
@@ -385,7 +396,9 @@
                 totalTime = data.totalTime;
                 increment = data.increment;
                 timers    = { w: totalTime, b: totalTime };
+                stopClock();
                 renderClocks();
+                updateClockUI();
             } else if (data.type === 'chat') {
                 appendChat(data.text, false);
             }
@@ -433,7 +446,7 @@
         
         if (conn) { conn.close(); conn = null; }
         if (peer) { peer.destroy(); peer = null; }
-        setConnStatus('', '🤖 تلعب الآن ضد الكمبيوتر');
+        setConnStatus('', '🤖 ضد الكمبيوتر');
 
         if (!engine) {
             var stockfishUrl = 'https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js';
@@ -547,7 +560,20 @@
 
         playMoveSound(move.flags, deliveredCheck);
 
-        if (seriesEnded) switchClock(move.color);
+        if (totalTime > 0 && clockInterval === null) {
+            timerStartTS = Date.now();
+            clockInterval = setInterval(tickClock, 100);
+        }
+
+        if (seriesEnded) {
+            switchClock();
+        } else {
+            if (timerStartTS !== null) {
+                var elapsed = (Date.now() - timerStartTS) / 1000;
+                timers[activeColor] = Math.max(0, timers[activeColor] - elapsed);
+                timerStartTS = Date.now();
+            }
+        }
 
         if (conn) {
             conn.send({
@@ -597,14 +623,12 @@
         board.position(game.fen());
     }
 
-    // أزرار التنقل التاريخي
     function goStart() { currentIdx = 0; board.position(historyState[0]); }
     function goPrev()  { if (currentIdx > 0) { currentIdx--; board.position(historyState[currentIdx]); } }
     function goNext()  { if (currentIdx < historyState.length - 1) { currentIdx++; board.position(historyState[currentIdx]); } }
     function goLast()  { currentIdx = historyState.length - 1; board.position(historyState[currentIdx]); }
     function flipBoard() { board.flip(); }
 
-    // حساب نقلات المحرك
     function makeBotMoveOnBoard(fromSquare, toSquare, promotionPiece) {
         var move = game.move({ from: fromSquare, to: toSquare, promotion: promotionPiece || 'q' });
         if (move) {
@@ -638,7 +662,7 @@
         var inc = parseInt($('#inc-select').val());
         totalTime = t; increment = inc;
         timers = { w: t, b: t }; activeColor = 'w';
-        stopClock(); renderClocks();
+        stopClock(); renderClocks(); updateClockUI();
         if (conn) conn.send({ type: 'timecontrol', totalTime: t, increment: inc });
     }
 
@@ -647,7 +671,6 @@
         timers = { w: totalTime, b: totalTime };
         activeColor = 'w'; timerStartTS = null;
         renderClocks(); updateClockUI();
-        if (totalTime > 0) startClock();
     }
 
     function updateClockUI() {
