@@ -127,10 +127,8 @@
 </head>
 <body>
 
-    <!-- ══ لوحة الغرفة ══ -->
     <div class="room-panel">
 
-        <!-- غرفتك -->
         <div class="room-section">
             <div class="room-label">رقم غرفتك (شاركه للصديق)</div>
             <div class="room-number-display" id="my-room" onclick="copyRoomNumber()" title="اضغط للنسخ">----</div>
@@ -138,7 +136,6 @@
 
         <div class="divider"></div>
 
-        <!-- انضم لغرفة -->
         <div class="room-section">
             <div class="room-label">انضم لغرفة الصديق</div>
             <div style="display:flex; gap:8px; align-items:center;">
@@ -152,7 +149,6 @@
 
         <div class="divider"></div>
 
-        <!-- الحالة + فليب -->
         <div class="room-section" style="gap:8px;">
             <div class="conn-status-badge waiting" id="conn-status">⏳ في انتظار صديق...</div>
             <button class="flip-btn" onclick="flipBoard()">&#8645; قلب الرقعة</button>
@@ -160,7 +156,6 @@
 
     </div>
 
-    <!-- شريط التعليمات -->
     <div class="hint-bar">
         <div class="hint-step"><div class="hint-num">1</div> افتح التطبيق عند الصديق</div>
         <div class="hint-step"><div class="hint-num">2</div> شارك رقم غرفتك المكوّن من 4 أرقام</div>
@@ -173,6 +168,7 @@
         <button id="tab-free" onclick="changeMode('pawnfree')">حرية بيادق (2-2)</button>
         <button id="tab-mar"  onclick="changeMode('marseille')">مارسيليا صارم</button>
         <button id="tab-prog" onclick="changeMode('progressive')">تراكمي (1-2..)</button>
+        <button id="tab-bot"  onclick="startBotMode()" style="color: #ffaa00;">ضد الكمبيوتر 🤖</button>
     </div>
 
     <div class="main-wrapper">
@@ -271,8 +267,6 @@
 
     // ════════════════════════════════════════
     //  نظام الغرف — P2P
-    //  الأبيض: يسجل بـ ID = "chessroom-XXXX"
-    //  الأسود: يتصل بـ "chessroom-XXXX"
     // ════════════════════════════════════════
     var peer   = null;
     var conn   = null;
@@ -280,7 +274,6 @@
     var myRoomNumber = null;
 
     function generateRoomNumber() {
-        // رقم عشوائي من 1000 إلى 9999
         return String(Math.floor(1000 + Math.random() * 9000));
     }
 
@@ -297,7 +290,6 @@
         peer = new Peer(peerId);
 
         peer.on('error', function(err) {
-            // لو الغرفة مشغولة جرب رقم جديد
             if (err.type === 'unavailable-id') {
                 var newRoom = generateRoomNumber();
                 setTimeout(function(){ initAsHost(newRoom); }, 300);
@@ -307,15 +299,12 @@
         });
 
         peer.on('open', function() {
-            // استقبال الاتصال
             peer.on('connection', function(c) {
                 conn   = c;
                 myRole = 'w';
                 setupConnListeners();
                 setConnStatus('online', '✓ متصل — أنت الأبيض ⬜');
             });
-
-            // استقبال مكالمة صوتية
             peer.on('call', handleIncomingCall);
         });
     }
@@ -329,7 +318,7 @@
         if (peer) { peer.destroy(); peer = null; }
 
         myRoomNumber = roomNum;
-        peer = new Peer(); // ID عشوائي للانضمام
+        peer = new Peer(); 
 
         peer.on('open', function() {
             var hostId = roomToPeerId(roomNum);
@@ -337,7 +326,6 @@
             myRole = 'b';
             setConnStatus('waiting', '⏳ جاري الاتصال...');
             setupConnListeners();
-
             peer.on('call', handleIncomingCall);
         });
 
@@ -411,17 +399,62 @@
     }
 
     // ════════════════════════════════════════
-    //  منطق اللعب (محفوظ بالكامل)
+    //  منطق اللعب
     // ════════════════════════════════════════
     var board = null, game = new Chess();
     var currentMode = 'standard', moveStep = 1, seriesLimit = 1, movesDone = 0;
     var historyState = [], currentIdx = 0;
-    var isFirstMove = true; // مارسيليا: نقلة الأبيض الأولى في المباراة تكون مفردة
+    var isFirstMove = true; 
+
+    // نظام الكمبيوتر المعدل ليعمل محلياً بدون تحميل ملفات
+    var engine = null;
+    var isBotMode = false;
+    var botDepth = 10;
+
+    function startBotMode() {
+        isBotMode = true;
+        currentMode = 'bot';
+        
+        $(".tabs button").removeClass("active");
+        $("#tab-bot").addClass("active");
+        
+        if (conn) { conn.close(); conn = null; }
+        if (peer) { peer.destroy(); peer = null; }
+        setConnStatus('', '🤖 تلعب الآن ضد الكمبيوتر');
+
+        if (!engine) {
+            var stockfishUrl = 'https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js';
+            fetch(stockfishUrl)
+                .then(function(response) { return response.text(); })
+                .then(function(script) {
+                    var blob = new Blob([script], {type: 'application/javascript'});
+                    var workerUrl = URL.createObjectURL(blob);
+                    engine = new Worker(workerUrl);
+
+                    engine.onmessage = function(event) {
+                        var line = event.data;
+                        if (line && typeof line === 'string' && line.indexOf('bestmove') > -1) {
+                            var match = line.match(/^bestmove ([a-h][1-8])([a-h][1-8])([qrbn])?/);
+                            if (match) {
+                                makeBotMoveOnBoard(match[1], match[2], match[3]);
+                            }
+                        }
+                    };
+                    engine.postMessage('uci');
+                    engine.postMessage('isready');
+                })
+                .catch(function(err) {
+                    $("#status-txt").text('⚠ خطأ: تأكد من اتصالك بالإنترنت لتحميل المحرك');
+                });
+        }
+        resetGame(false);
+    }
 
     function changeMode(m) { setMode(m, true); }
 
     function setMode(mode, broadcast) {
         currentMode = mode;
+        isBotMode = false; // يوقف الكمبيوتر لو رجعت للأطوار العادية
         syncTabsUI();
         if (broadcast && conn) conn.send({ type: 'mode', mode: mode });
         resetGame(broadcast);
@@ -431,7 +464,8 @@
         $(".tabs button").removeClass("active");
         var tabId = currentMode === 'standard' ? 'std' :
                     currentMode === 'marseille' ? 'mar' :
-                    currentMode === 'progressive' ? 'prog' : 'free';
+                    currentMode === 'progressive' ? 'prog' : 
+                    currentMode === 'bot' ? 'bot' : 'free';
         $("#tab-" + tabId).addClass("active");
     }
 
@@ -452,6 +486,7 @@
     function onDragStart(s, p) {
         if (game.game_over() || currentIdx !== historyState.length - 1) return false;
         if (conn && game.turn() !== myRole) return false;
+        if (isBotMode && game.turn() !== 'w') return false; 
         if ((game.turn() === 'w' && p.search(/^b/) !== -1) ||
             (game.turn() === 'b' && p.search(/^w/) !== -1)) return false;
     }
@@ -472,7 +507,6 @@
 
         } else if (currentMode === 'marseille') {
             if (isFirstMove) {
-                // النقلة الأولى للأبيض في المباراة: مفردة دائماً
                 isFirstMove = false;
                 moveStep = 1; seriesEnded = true;
             } else if (moveStep === 1) {
@@ -505,15 +539,21 @@
         if (conn) {
             conn.send({
                 type: 'move', fen: game.fen(),
-                moveStep, seriesLimit, movesDone, mode: currentMode,
-                isFirstMove,
-                timers, increment, activeColor,
+                moveStep: moveStep, seriesLimit: seriesLimit, movesDone: movesDone, mode: currentMode,
+                isFirstMove: isFirstMove, timers: timers, increment: increment, activeColor: activeColor,
                 lastMoveFlags: move.flags, inCheck: deliveredCheck
             });
         }
 
         updateUI();
-        if (game.game_over()) { sfx.end(); stopClock(); }
+        
+        if (game.game_over()) { 
+            sfx.end(); stopClock(); 
+        } else {
+            if (isBotMode && game.turn() === 'b') {
+                setTimeout(askBotToMove, 250);
+            }
+        }
     }
 
     function forceKeepTurn() {
@@ -536,7 +576,7 @@
 
     function updateUI() {
         var p = (game.turn() === 'w' ? 'الأبيض' : 'الأسود');
-        var status = currentMode === 'standard'    ? 'دور ' + p :
+        var status = currentMode === 'standard' || currentMode === 'bot' ? 'دور ' + p :
                      currentMode === 'progressive' ? 'دور ' + p + ' - نقلة ' + (movesDone + 1) + '/' + seriesLimit :
                                                      'دور ' + p + ' - نقلة ' + moveStep + '/2';
         if (game.in_checkmate()) status = 'كش ملك! انتهى الجيم.';
@@ -549,6 +589,29 @@
     function goNext()  { if (currentIdx < historyState.length - 1) { currentIdx++; board.position(historyState[currentIdx]); } }
     function goLast()  { currentIdx = historyState.length - 1; board.position(historyState[currentIdx]); }
     function flipBoard() { board.flip(); }
+
+    // ════════════════════════════════════════
+    //  الكمبيوتر: تنفيذ وحساب النقلات
+    // ════════════════════════════════════════
+    function makeBotMoveOnBoard(fromSquare, toSquare, promotionPiece) {
+        var move = game.move({ from: fromSquare, to: toSquare, promotion: promotionPiece || 'q' });
+        if (move) {
+            board.position(game.fen());
+            addLog(move.san);
+            playMoveSound(move.flags, game.in_check());
+            historyState.push(game.fen());
+            currentIdx = historyState.length - 1;
+            updateUI();
+            if (game.game_over()) { sfx.end(); stopClock(); } 
+            else { switchClock(move.color); }
+        }
+    }
+
+    function askBotToMove() {
+        if (game.game_over() || !engine) return;
+        engine.postMessage('position fen ' + game.fen());
+        engine.postMessage('go depth ' + botDepth);
+    }
 
     // ════════════════════════════════════════
     //  التايم كنترول
@@ -653,57 +716,59 @@
             call.answer(stream);
             mediaConn = call;
             call.on('stream', function(rs) { remoteAudio.srcObject = rs; setVoiceUI(true); });
-            call.on('close',  function()   { setVoiceUI(false); });
-        }).catch(function(e) { console.warn('mic denied', e); });
+        });
     }
 
     function toggleVoice() {
-        if (!conn || !conn.open) { alert('اتصل بصديق أولاً!'); return; }
         if (!voiceActive) {
             navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then(function(stream) {
                 localStream = stream;
-                var targetId = conn.peer;
-                mediaConn = peer.call(targetId, stream);
-                mediaConn.on('stream', function(rs) { remoteAudio.srcObject = rs; setVoiceUI(true); });
-                mediaConn.on('close',  function()   { setVoiceUI(false); });
-            }).catch(function(e) { alert('لا يمكن الوصول للمايك: ' + e.message); });
+                voiceActive = true;
+                setVoiceUI(true);
+                if (conn && conn.peer) {
+                    mediaConn = peer.call(conn.peer, stream);
+                    mediaConn.on('stream', function(rs) { remoteAudio.srcObject = rs; });
+                }
+            }).catch(function(err) {
+                alert("لم يتم العثور على مايكروفون أو تم رفض الصلاحية.");
+            });
         } else {
-            if (mediaConn) { mediaConn.close(); mediaConn = null; }
-            if (localStream) { localStream.getTracks().forEach(function(t){ t.stop(); }); localStream = null; }
+            if (localStream) { localStream.getTracks().forEach(t => t.stop()); }
+            if (mediaConn) { mediaConn.close(); }
+            voiceActive = false;
             setVoiceUI(false);
         }
     }
 
     function setVoiceUI(active) {
-        voiceActive = active;
+        var btn = $('#voice-btn'), dot = $('#mic-dot'), st = $('#voice-status');
         if (active) {
-            $('#voice-btn').text('إيقاف الصوت').removeClass('off').addClass('on');
-            $('#mic-dot').addClass('active');
-            $('#voice-status').text('مكالمة جارية...').css('color','var(--accent)');
+            btn.removeClass('off').addClass('on').text('إيقاف الصوت');
+            dot.addClass('active');
+            st.text('الصوت يعمل');
         } else {
-            $('#voice-btn').text('تفعيل الصوت').removeClass('on').addClass('off');
-            $('#mic-dot').removeClass('active');
-            $('#voice-status').text('الصوت متوقف').css('color','#555');
+            btn.removeClass('on').addClass('off').text('تفعيل الصوت');
+            dot.removeClass('active');
+            st.text('الصوت متوقف');
         }
     }
 
     // ════════════════════════════════════════
-    //  تهيئة
+    //  تشغيل الرقعة عند تحميل الصفحة
     // ════════════════════════════════════════
     $(document).ready(function() {
         board = Chessboard('board', {
-            draggable:   true,
-            position:    'start',
+            pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png',
+            draggable: true,
+            position: 'start',
             onDragStart: onDragStart,
-            onDrop:      onDrop,
-            pieceTheme:  'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
+            onDrop: onDrop,
+            onSnapEnd: function() { board.position(game.fen()); }
         });
-        setMode('standard', false);
-        applyTimeControl();
-
-        // توليد رقم الغرفة تلقائياً عند الفتح
-        initAsHost(generateRoomNumber());
+        updateUI();
+        initAsHost(generateRoomNumber()); // تجهيز غرفة جديدة تلقائياً
     });
+
     </script>
 </body>
 </html>
