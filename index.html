@@ -149,9 +149,21 @@
 
         <div class="divider"></div>
 
-        <div class="room-section" style="gap:8px;">
+      <div class="room-section" style="gap:8px;">
             <div class="conn-status-badge waiting" id="conn-status">⏳ في انتظار صديق...</div>
-            <button class="flip-btn" onclick="flipBoard()">&#8645; قلب الرقعة</button>
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <button class="flip-btn" onclick="flipBoard()">&#8645; قلب الرقعة</button>
+                
+                <!-- البطاقة التعريفية وصورة الكابتن -->
+                <div style="display: flex; align-items: center; gap: 10px; background: #0a1510; padding: 4px 14px 4px 4px; border-radius: 40px; border: 1px solid var(--accent); box-shadow: 0 0 10px rgba(0,255,204,0.1);">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Essam_Elgindy.jpg/200px-Essam_Elgindy.jpg" 
+                         onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/e/ea/Essam_Elgindy.jpg'" 
+                         alt="Captain Essam" 
+                         style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent);">
+                    <span style="color: var(--accent); font-weight: bold; font-size: 1.05em; text-shadow: 0 0 8px rgba(0,255,204,0.4); white-space: nowrap;">منصة الكابتن عصام الجندي</span>
+                </div>
+
+            </div>
         </div>
 
     </div>
@@ -219,7 +231,7 @@
 
             <div class="voice-bar">
                 <div class="mic-indicator" id="mic-dot"></div>
-                <span class="voice-status" id="voice-status">الصوت متوقف</span>
+                <span class="voice-status" id="voice-status">الصومت متوقف</span>
                 <button class="voice-btn off" id="voice-btn" onclick="toggleVoice()">تفعيل الصوت</button>
             </div>
 
