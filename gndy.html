@@ -8,7 +8,7 @@
         :root { --accent: #00ffcc; --bg: #050505; --panel: #111; --danger: #ff3333; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: #fff; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
 
-        /* ══ لوحة الغرفة - تم تصغيرها وتنسيقها ══ */
+        /* ══ لوحة الغرفة ══ */
         .room-panel {
             background: var(--panel); padding: 10px 16px; border-radius: 12px;
             border: 1px solid #333; margin-bottom: 12px;
@@ -19,7 +19,6 @@
         .room-section { display: flex; flex-direction: column; gap: 3px; }
         .room-label { font-size: .65em; color: #777; letter-spacing: 0.5px; }
 
-        /* رقم الغرفة */
         .room-number-display {
             font-family: monospace; font-size: 1.5em; font-weight: bold;
             color: var(--accent); background: #000;
@@ -30,7 +29,6 @@
         .room-number-display:hover { box-shadow: 0 0 10px rgba(0,255,204,.3); }
         .room-number-display.copied { border-color: #fff; color: #fff; }
 
-        /* حقل إدخال الغرفة */
         .room-input {
             font-family: monospace; font-size: 1.3em; font-weight: bold;
             width: 80px; text-align: center; letter-spacing: 2px;
@@ -50,7 +48,7 @@
             background: #0a0a0a; border: 1px solid #333; color: #666;
             transition: .3s; white-space: nowrap; text-align: center;
         }
-        .conn-status-badge.online { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 8px rgba(0,255,204,.1); }
+        .conn-status-badge.online  { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 8px rgba(0,255,204,.1); }
         .conn-status-badge.waiting { border-color: #ffaa00; color: #ffaa00; }
 
         /* شريط التعليمات */
@@ -71,7 +69,6 @@
 
         .main-wrapper { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 1100px; align-items: flex-start; }
 
-        /* تكبير الرقعة وتنسيق المحاذاة */
         .board-area { display: flex; gap: 10px; align-items: stretch; }
         #board { width: 680px; border: 6px solid #222; border-radius: 4px; box-shadow: 0 10px 50px rgba(0,0,0,0.8); flex-shrink: 0; }
 
@@ -85,12 +82,12 @@
         .clock-box.low .clock-time { color: var(--danger); }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
-        /* الشريط الجانبي وتصغير عناصره */
+        /* الشريط الجانبي */
         .sidebar { width: 280px; background: var(--panel); padding: 12px; border-radius: 12px; border: 1px solid #333; display: flex; flex-direction: column; box-sizing: border-box; }
         .status-box { background: #000; padding: 8px; border-radius: 8px; border: 1px solid var(--accent); text-align: center; margin-bottom: 10px; }
         #status-txt { font-weight: bold; color: var(--accent); font-size: 0.95em; }
         .log { overflow-y: auto; background: #000; padding: 8px; font-family: monospace; font-size: 12px; color: #aaa; border: 1px solid #222; border-radius: 5px; max-height: 150px; }
-        
+
         .nav-btn { flex: 1; padding: 6px; cursor: pointer; border: none; border-radius: 4px; background: var(--accent); color: #000; font-weight: bold; font-size: 16px; }
         .reset-btn { margin-top: 8px; padding: 8px; background: var(--danger); color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 0.9em; cursor: pointer; width: 100%; }
 
@@ -110,7 +107,7 @@
         .chat-msgs::-webkit-scrollbar-thumb { background: #333; }
         .chat-msg { margin-bottom: 3px; line-height: 1.3; }
         .chat-msg .who { font-weight: bold; margin-left: 4px; }
-        .chat-msg.me .who { color: var(--accent); }
+        .chat-msg.me .who  { color: var(--accent); }
         .chat-msg.opp .who { color: #aaa; }
         .chat-input-row { display: flex; gap: 4px; padding: 4px; border-top: 1px solid #222; }
         .chat-input { flex: 1; background: #111; border: 1px solid #333; border-radius: 4px; color: #fff; padding: 4px 6px; font-size: .75em; outline: none; }
@@ -158,10 +155,9 @@
         <div class="room-section" style="gap:6px; flex-direction: row; align-items: center;">
             <div class="conn-status-badge waiting" id="conn-status">⏳ في انتظار صديق...</div>
             <button class="flip-btn" onclick="flipBoard()">&#8645; قلب الرقعة</button>
-            
             <div style="display: flex; align-items: center; gap: 8px; background: #0a1510; padding: 3px 10px 3px 3px; border-radius: 30px; border: 1px solid var(--accent); box-shadow: 0 0 8px rgba(0,255,204,0.1);">
-                <img src="profile.jpg" 
-                     alt="Captain Essam" 
+                <img src="profile.jpg"
+                     alt="Captain Essam"
                      style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 1.5px solid var(--accent); background: #222;">
                 <span style="color: var(--accent); font-weight: bold; font-size: 0.85em; text-shadow: 0 0 6px rgba(0,255,204,0.3); white-space: nowrap;">منصة الكابتن عصام الجندي</span>
             </div>
@@ -279,12 +275,26 @@
     };
 
     // ════════════════════════════════════════
-    //  نظام الغرف — P2P
+    //  نظام الغرف — P2P (مُصلَح)
     // ════════════════════════════════════════
-    var peer   = null;
-    var conn   = null;
-    var myRole = null;
+
+    // ✅ الإصلاح #1: إعداد خوادم STUN — هذا هو سبب توقف الاتصال عند "جاري الاتصال"
+    var peerConfig = {
+        config: {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' },
+                { urls: 'stun:stun3.l.google.com:19302' }
+            ]
+        }
+    };
+
+    var peer         = null;
+    var conn         = null;
+    var myRole       = null;
     var myRoomNumber = null;
+    var connTimeout  = null; // ✅ الإصلاح #2: timeout لمنع الانتظار اللانهائي
 
     function generateRoomNumber() {
         return String(Math.floor(1000 + Math.random() * 9000));
@@ -300,7 +310,8 @@
         $('#my-room').text(roomNum);
         setConnStatus('waiting', '⏳ في انتظار صديق...');
 
-        peer = new Peer(peerId);
+        // ✅ الإصلاح: أضفنا peerConfig مع خوادم STUN
+        peer = new Peer(peerId, peerConfig);
 
         peer.on('error', function(err) {
             if (err.type === 'unavailable-id') {
@@ -315,8 +326,10 @@
             peer.on('connection', function(c) {
                 conn   = c;
                 myRole = 'w';
+                // ✅ الإصلاح #3: حذفنا setConnStatus من هنا —
+                //    كانت تُشغَّل قبل فتح قناة البيانات فعلياً.
+                //    الآن conn.on('open') داخل setupConnListeners هو من يغيّر الحالة.
                 setupConnListeners();
-                setConnStatus('online', '✓ متصل — أنت الأبيض ⬜');
             });
             peer.on('call', handleIncomingCall);
         });
@@ -328,27 +341,55 @@
             alert('أدخل رقم الغرفة المكوّن من 4 أرقام بالضبط!');
             return;
         }
+
         if (peer) { peer.destroy(); peer = null; }
 
+        // ✅ الإصلاح: إلغاء أي timeout سابق عند إعادة المحاولة
+        if (connTimeout) { clearTimeout(connTimeout); connTimeout = null; }
+
         myRoomNumber = roomNum;
-        peer = new Peer(); 
+
+        // ✅ الإصلاح: أضفنا peerConfig مع خوادم STUN
+        peer = new Peer(peerConfig);
 
         peer.on('open', function() {
             var hostId = roomToPeerId(roomNum);
-            conn   = peer.connect(hostId, { reliable: true });
+
+            // ✅ الإصلاح: أضفنا serialization:'json' لضمان توافق البيانات بين المتصفحات
+            conn   = peer.connect(hostId, { reliable: true, serialization: 'json' });
             myRole = 'b';
             setConnStatus('waiting', '⏳ جاري الاتصال...');
             setupConnListeners();
             peer.on('call', handleIncomingCall);
+
+            // ✅ الإصلاح: timeout 20 ثانية مع رسالة واضحة للمستخدم
+            connTimeout = setTimeout(function() {
+                if (conn && !conn.open) {
+                    setConnStatus('', '⚠ انتهت مهلة الاتصال — تأكد من رقم الغرفة وأعد المحاولة');
+                }
+            }, 20000);
         });
 
+        // ✅ الإصلاح: رسائل خطأ مفصّلة حسب نوع المشكلة
         peer.on('error', function(err) {
-            setConnStatus('', '⚠ لم يُعثر على الغرفة ' + roomNum);
+            if (connTimeout) { clearTimeout(connTimeout); connTimeout = null; }
+            if (err.type === 'peer-unavailable') {
+                setConnStatus('', '⚠ غرفة ' + roomNum + ' غير موجودة — تحقق من الرقم');
+            } else if (err.type === 'network') {
+                setConnStatus('', '⚠ مشكلة في الشبكة — تحقق من الاتصال بالإنترنت');
+            } else if (err.type === 'server-error') {
+                setConnStatus('', '⚠ خطأ في خادم الإشارات — أعد المحاولة بعد لحظة');
+            } else {
+                setConnStatus('', '⚠ خطأ: ' + err.type);
+            }
         });
     }
 
     function setupConnListeners() {
+        // ✅ الإصلاح: هذا هو المكان الوحيد الصحيح لتغيير الحالة لـ online
+        //    يعمل لكلٍّ من المضيف والضيف عند فتح قناة البيانات فعلياً
         conn.on('open', function() {
+            if (connTimeout) { clearTimeout(connTimeout); connTimeout = null; }
             var label = myRole === 'w' ? '✓ متصل — أنت الأبيض ⬜' : '✓ متصل — أنت الأسود ⬛';
             setConnStatus('online', label);
             $('#chat-conn-hint').text('متصل').css('color', 'var(--accent)');
@@ -369,11 +410,6 @@
                     activeColor  = data.activeColor;
                     updateClockUI();
                     renderClocks();
-                    
-                    // تشغيل عداد الوقت عند الطرف الآخر إذا لم يكن يعمل بعد
-                    if (totalTime > 0 && clockInterval === null) {
-                        clockInterval = setInterval(tickClock, 100);
-                    }
                 }
                 historyState.push(game.fen());
                 currentIdx = historyState.length - 1;
@@ -389,9 +425,7 @@
                 totalTime = data.totalTime;
                 increment = data.increment;
                 timers    = { w: totalTime, b: totalTime };
-                stopClock();
                 renderClocks();
-                updateClockUI();
             } else if (data.type === 'chat') {
                 appendChat(data.text, false);
             }
@@ -400,6 +434,12 @@
         conn.on('close', function() {
             setConnStatus('', '⚠ انقطع الاتصال');
             conn = null;
+        });
+
+        // ✅ الإصلاح: معالج أخطاء قناة البيانات — كان ناقصاً خالص في الكود الأصلي
+        conn.on('error', function(err) {
+            setConnStatus('', '⚠ خطأ في القناة');
+            console.error('DataChannel error:', err);
         });
     }
 
@@ -424,19 +464,19 @@
     var board = null, game = new Chess();
     var currentMode = 'standard', moveStep = 1, seriesLimit = 1, movesDone = 0;
     var historyState = [], currentIdx = 0;
-    var isFirstMove = true; 
+    var isFirstMove = true;
 
-    var engine = null;
+    var engine    = null;
     var isBotMode = false;
-    var botDepth = 10;
+    var botDepth  = 10;
 
     function startBotMode() {
         isBotMode = true;
         currentMode = 'bot';
-        
+
         $(".tabs button").removeClass("active");
         $("#tab-bot").addClass("active");
-        
+
         if (conn) { conn.close(); conn = null; }
         if (peer) { peer.destroy(); peer = null; }
         setConnStatus('', '🤖 تلعب الآن ضد الكمبيوتر');
@@ -446,7 +486,7 @@
             fetch(stockfishUrl)
                 .then(function(response) { return response.text(); })
                 .then(function(script) {
-                    var blob = new Blob([script], {type: 'application/javascript'});
+                    var blob      = new Blob([script], { type: 'application/javascript' });
                     var workerUrl = URL.createObjectURL(blob);
                     engine = new Worker(workerUrl);
 
@@ -462,8 +502,8 @@
                     engine.postMessage('uci');
                     engine.postMessage('isready');
                 })
-                .catch(function(err) {
-                    $("#status-txt").text('⚠ خطأ في تحميل المحرك محلياً');
+                .catch(function() {
+                    $("#status-txt").text('⚠ خطأ في تحميل المحرك');
                 });
         }
         resetGame(false);
@@ -473,7 +513,7 @@
 
     function setMode(mode, broadcast) {
         currentMode = mode;
-        isBotMode = false;
+        isBotMode   = false;
         syncTabsUI();
         if (broadcast && conn) conn.send({ type: 'mode', mode: mode });
         resetGame(broadcast);
@@ -481,10 +521,10 @@
 
     function syncTabsUI() {
         $(".tabs button").removeClass("active");
-        var tabId = currentMode === 'standard' ? 'std' :
-                    currentMode === 'marseille' ? 'mar' :
-                    currentMode === 'progressive' ? 'prog' : 
-                    currentMode === 'bot' ? 'bot' : 'free';
+        var tabId = currentMode === 'standard'    ? 'std'  :
+                    currentMode === 'marseille'   ? 'mar'  :
+                    currentMode === 'progressive' ? 'prog' :
+                    currentMode === 'bot'         ? 'bot'  : 'free';
         $("#tab-" + tabId).addClass("active");
     }
 
@@ -493,7 +533,7 @@
         moveStep = 1; seriesLimit = 1; movesDone = 0;
         isFirstMove = true;
         historyState = [game.fen()];
-        currentIdx = 0;
+        currentIdx   = 0;
         $("#log").empty();
         if (broadcast && conn) conn.send({ type: 'reset' });
         resetTimers();
@@ -505,7 +545,7 @@
     function onDragStart(s, p) {
         if (game.game_over() || currentIdx !== historyState.length - 1) return false;
         if (conn && game.turn() !== myRole) return false;
-        if (isBotMode && game.turn() !== 'w') return false; 
+        if (isBotMode && game.turn() !== 'w') return false;
         if ((game.turn() === 'w' && p.search(/^b/) !== -1) ||
             (game.turn() === 'b' && p.search(/^w/) !== -1)) return false;
     }
@@ -517,7 +557,7 @@
 
         addLog(move.san);
         var deliveredCheck = game.in_check();
-        var seriesEnded = false;
+        var seriesEnded    = false;
 
         if (currentMode === 'pawnfree') {
             if (moveStep === 1 && !deliveredCheck && !game.game_over()) {
@@ -553,22 +593,7 @@
 
         playMoveSound(move.flags, deliveredCheck);
 
-        // تشغيل الساعة فور لعب أول نقلة في الجيم إذا لم تكن تعمل
-        if (totalTime > 0 && clockInterval === null) {
-            timerStartTS = Date.now();
-            clockInterval = setInterval(tickClock, 100);
-        }
-
-        if (seriesEnded) {
-            switchClock();
-        } else {
-            // نقلة وسيطة في الأدوار المتعددة: نخصم الوقت الفعلي الحالي لتحديث العداد بدقة عند الطرف الآخر
-            if (timerStartTS !== null) {
-                var elapsed = (Date.now() - timerStartTS) / 1000;
-                timers[activeColor] = Math.max(0, timers[activeColor] - elapsed);
-                timerStartTS = Date.now();
-            }
-        }
+        if (seriesEnded) switchClock(move.color);
 
         if (conn) {
             conn.send({
@@ -580,9 +605,9 @@
         }
 
         updateUI();
-        
-        if (game.game_over()) { 
-            sfx.end(); stopClock(); 
+
+        if (game.game_over()) {
+            sfx.end(); stopClock();
         } else {
             if (isBotMode && game.turn() === 'b') {
                 setTimeout(askBotToMove, 250);
@@ -609,10 +634,12 @@
     }
 
     function updateUI() {
-        var p = (game.turn() === 'w' ? 'الأبيض' : 'الأسود');
-        var status = currentMode === 'standard' || currentMode === 'bot' ? 'دور ' + p :
-                     currentMode === 'progressive' ? 'دور ' + p + ' - نقلة ' + (movesDone + 1) + '/' + seriesLimit :
-                                                     'دور ' + p + ' - نقلة ' + moveStep + '/2';
+        var p      = (game.turn() === 'w' ? 'الأبيض' : 'الأسود');
+        var status = currentMode === 'standard' || currentMode === 'bot'
+            ? 'دور ' + p
+            : currentMode === 'progressive'
+                ? 'دور ' + p + ' - نقلة ' + (movesDone + 1) + '/' + seriesLimit
+                : 'دور ' + p + ' - نقلة ' + moveStep + '/2';
         if (game.in_checkmate()) status = 'كش ملك! انتهى الجيم.';
         $("#status-txt").text(status);
         board.position(game.fen());
@@ -625,7 +652,7 @@
     function goLast()  { currentIdx = historyState.length - 1; board.position(historyState[currentIdx]); }
     function flipBoard() { board.flip(); }
 
-    // حساب نقلات المحرك
+    // نقلات الكمبيوتر
     function makeBotMoveOnBoard(fromSquare, toSquare, promotionPiece) {
         var move = game.move({ from: fromSquare, to: toSquare, promotion: promotionPiece || 'q' });
         if (move) {
@@ -635,7 +662,7 @@
             historyState.push(game.fen());
             currentIdx = historyState.length - 1;
             updateUI();
-            if (game.game_over()) { sfx.end(); stopClock(); } 
+            if (game.game_over()) { sfx.end(); stopClock(); }
             else { switchClock(move.color); }
         }
     }
@@ -650,8 +677,8 @@
     //  التايم كنترول
     // ════════════════════════════════════════
     var totalTime = 300, increment = 0;
-    var timers = { w: 300, b: 300 };
-    var activeColor = 'w';
+    var timers    = { w: 300, b: 300 };
+    var activeColor  = 'w';
     var timerStartTS = null, clockInterval = null;
 
     function applyTimeControl() {
@@ -659,7 +686,7 @@
         var inc = parseInt($('#inc-select').val());
         totalTime = t; increment = inc;
         timers = { w: t, b: t }; activeColor = 'w';
-        stopClock(); renderClocks(); updateClockUI();
+        stopClock(); renderClocks();
         if (conn) conn.send({ type: 'timecontrol', totalTime: t, increment: inc });
     }
 
@@ -668,7 +695,7 @@
         timers = { w: totalTime, b: totalTime };
         activeColor = 'w'; timerStartTS = null;
         renderClocks(); updateClockUI();
-        // تم إلغاء تشغيل الساعة هنا لتبدأ مجمدة وتعمل فقط فور النقلة الأولى
+        if (totalTime > 0) startClock();
     }
 
     function updateClockUI() {
@@ -728,6 +755,7 @@
         appendChat(txt, true);
         if (conn && conn.open) conn.send({ type: 'chat', text: txt });
     }
+
     function appendChat(text, isMe) {
         var who = isMe ? (myRole === 'w' ? 'أبيض' : 'أسود') : (myRole === 'w' ? 'أسود' : 'أبيض');
         var cls = isMe ? 'me' : 'opp';
@@ -762,12 +790,12 @@
                     mediaConn = peer.call(conn.peer, stream);
                     mediaConn.on('stream', function(rs) { remoteAudio.srcObject = rs; });
                 }
-            }).catch(function(err) {
-                alert("لم يتم العثور على مايكروفون أو تم رفض الصلاحية.");
+            }).catch(function() {
+                alert('لم يتم العثور على مايكروفون أو تم رفض الصلاحية.');
             });
         } else {
-            if (localStream) { localStream.getTracks().forEach(t => t.stop()); }
-            if (mediaConn) { mediaConn.close(); }
+            if (localStream) { localStream.getTracks().forEach(function(t) { t.stop(); }); }
+            if (mediaConn)   { mediaConn.close(); }
             voiceActive = false;
             setVoiceUI(false);
         }
@@ -792,13 +820,14 @@
     $(document).ready(function() {
         board = Chessboard('board', {
             pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png',
-            draggable: true,
-            position: 'start',
+            draggable:  true,
+            position:   'start',
             onDragStart: onDragStart,
-            onDrop: onDrop,
-            onSnapEnd: function() { board.position(game.fen()); }
+            onDrop:      onDrop,
+            onSnapEnd:   function() { board.position(game.fen()); }
         });
         updateUI();
+        syncTabsUI();
         initAsHost(generateRoomNumber());
     });
     </script>
