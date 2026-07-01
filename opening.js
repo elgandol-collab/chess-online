@@ -85,13 +85,23 @@
     var panelHtml =
         '<div class="settings-group" id="opening-recorder-group">' +
             '<div class="group-title">Create Engine Opening</div>' +
-            '<div style="display:flex;flex-direction:column;gap:8px;">' +
+            '<div style="display:flex;flex-direction:column;gap:6px;">' +
                 '<button class="btn-apply" id="btn-rec-start">▶ Start Recording Opening</button>' +
                 '<button class="btn-apply" id="btn-rec-save-white" disabled>💾 Save for Engine (as White)</button>' +
                 '<button class="btn-apply" id="btn-rec-save-black" disabled>💾 Save for Engine (as Black)</button>' +
                 '<button class="btn-apply" id="btn-rec-cancel" disabled style="border-color:#a33;color:#f88;">✖ Cancel Recording</button>' +
             '</div>' +
-            '<div id="rec-log" style="margin-top:10px;font-size:0.85em;color:#888;min-height:1.2em;line-height:1.6;"></div>' +
+            '<div id="rec-log" style="margin-top:6px;font-size:0.8em;color:#888;min-height:1.2em;line-height:1.5;"></div>' +
+        '</div>' +
+        '<div class="settings-group" id="opening-backup-group">' +
+            '<div class="group-title">Book Backup</div>' +
+            '<div style="display:flex;flex-direction:column;gap:6px;">' +
+                '<button class="btn-apply" id="btn-book-export">⬇ Export Book</button>' +
+                '<button class="btn-apply" id="btn-book-import">⬆ Import Book</button>' +
+                '<button class="btn-apply" id="btn-book-copy">📋 Copy Book Text</button>' +
+                '<input type="file" id="book-import-file" accept=".json" style="display:none;">' +
+            '</div>' +
+            '<div id="book-backup-log" style="margin-top:6px;font-size:0.8em;color:#888;min-height:1.2em;line-height:1.5;"></div>' +
         '</div>';
 
     function injectUI() {
@@ -101,6 +111,11 @@
         $('#btn-rec-save-white').on('click', function () { saveRecording('w'); });
         $('#btn-rec-save-black').on('click', function () { saveRecording('b'); });
         $('#btn-rec-cancel').on('click', cancelRecording);
+
+        $('#btn-book-export').on('click', exportBook);
+        $('#btn-book-import').on('click', function () { $('#book-import-file').trigger('click'); });
+        $('#book-import-file').on('change', importBookFile);
+        $('#btn-book-copy').on('click', copyBookText);
     }
 
     // ─────────────────────────────────────
@@ -204,6 +219,64 @@
         stopRecordingMode();
         $('#status-txt').text('Recording cancelled');
         resetGame();
+    }
+
+    // ─────────────────────────────────────
+    // نسخ احتياطي للكتاب: تصدير / استيراد / نسخ نص
+    // ─────────────────────────────────────
+    function exportBook() {
+        var pgnWhite = localStorage.getItem(STORAGE_KEY_WHITE) || '';
+        var pgnBlack = localStorage.getItem(STORAGE_KEY_BLACK) || '';
+        if (!pgnWhite && !pgnBlack) {
+            $('#book-backup-log').text('No saved openings to export yet.');
+            return;
+        }
+        var data = { white: pgnWhite, black: pgnBlack };
+        var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url; a.download = 'opening-book.json';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        $('#book-backup-log').text('✅ Book exported.');
+    }
+
+    function importBookFile(e) {
+        var file = e.target.files && e.target.files[0];
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function (evt) {
+            try {
+                var data = JSON.parse(evt.target.result);
+                if (data.white) localStorage.setItem(STORAGE_KEY_WHITE, data.white);
+                if (data.black) localStorage.setItem(STORAGE_KEY_BLACK, data.black);
+                loadBooksFromStorage();
+                $('#book-backup-log').text('✅ Book imported successfully.');
+            } catch (err) {
+                $('#book-backup-log').text('⚠ Invalid file format.');
+            }
+            $('#book-import-file').val('');
+        };
+        reader.readAsText(file);
+    }
+
+    function copyBookText() {
+        var pgnWhite = localStorage.getItem(STORAGE_KEY_WHITE) || '';
+        var pgnBlack = localStorage.getItem(STORAGE_KEY_BLACK) || '';
+        if (!pgnWhite && !pgnBlack) {
+            $('#book-backup-log').text('No saved openings to copy yet.');
+            return;
+        }
+        var text = JSON.stringify({ white: pgnWhite, black: pgnBlack }, null, 2);
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(function () {
+                $('#book-backup-log').text('📋 Copied to clipboard.');
+            }).catch(function () {
+                $('#book-backup-log').text('⚠ Copy failed, please copy manually.');
+            });
+        } else {
+            $('#book-backup-log').text('⚠ Clipboard not supported in this browser.');
+        }
     }
 
     // ─────────────────────────────────────
