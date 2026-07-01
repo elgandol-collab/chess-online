@@ -203,15 +203,20 @@
                 <div class="group-title">Time Control</div>
                 <div class="time-ctrl">
                     <select id="time-select">
+                        <option value="60">1 min</option>
                         <option value="180">3 min</option>
                         <option value="300" selected>5 min</option>
                         <option value="600">10 min</option>
+                        <option value="900">15 min</option>
+                        <option value="1500">25 min</option>
                         <option value="0">No limit</option>
                     </select>
                     <select id="inc-select">
                         <option value="0">+0 s</option>
                         <option value="2">+2 s</option>
                         <option value="5">+5 s</option>
+                        <option value="10">+10 s</option>
+                        <option value="30">+30 s</option>
                     </select>
                     <button class="btn-apply" onclick="applyTimeControl()">Apply & New Game</button>
                 </div>

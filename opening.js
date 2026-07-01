@@ -35,7 +35,27 @@
         openingBookBlack = parsePgnToMoves(pgnBlack);
     }
 
-    loadBooksFromStorage();
+    // ─────────────────────────────────────
+    // تحميل الكتاب من ملف opening-book.json (المصدر الرئيسي، يعمل على GitHub Pages)
+    // وإذا فشل (مثلاً وقت التطوير المحلي عبر file://) يرجع لـ localStorage كبديل
+    // ─────────────────────────────────────
+    function loadBooksFromFileOrStorage() {
+        fetch('opening-book.json', { cache: 'no-store' })
+            .then(function (res) {
+                if (!res.ok) throw new Error('opening-book.json not found');
+                return res.json();
+            })
+            .then(function (data) {
+                openingBookWhite = parsePgnToMoves(data.white || '');
+                openingBookBlack = parsePgnToMoves(data.black || '');
+                console.log('Opening book loaded from opening-book.json');
+            })
+            .catch(function () {
+                loadBooksFromStorage();
+            });
+    }
+
+    loadBooksFromFileOrStorage();
 
     // ─────────────────────────────────────
     // إجبار المحرك على لعب الافتتاح المحفوظ
@@ -209,6 +229,7 @@
 
         stopRecordingMode();
         $('#status-txt').text('✅ ' + (color === 'w' ? 'White' : 'Black') + ' opening saved successfully');
+        $('#book-backup-log').html('⚠ Saved locally only. Click <b>Export Book</b> below and upload it to GitHub to update it for everyone.');
 
         // العودة للعب طبيعي
         resetGame();
